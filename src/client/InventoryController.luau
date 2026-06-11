@@ -7,9 +7,8 @@ local InvTicketsTemplates = ReplicatedStorage:WaitForChild("InvTickets")
 local InventoryFolder = Player:WaitForChild("Inventory")
 
 local InvGui = PlayerGui:WaitForChild("InvGUI")
--- Based on user feedback, InvFrame might be called ShopFrame or just be missing (with Tickets directly inside)
-local InvFrame = InvGui:FindFirstChild("InvFrame") or InvGui:FindFirstChild("ShopFrame") or InvGui
-local TicketsZone = InvFrame:WaitForChild("Tickets")
+local InvFrame = InvGui:WaitForChild("ShopFrame")
+local TicketsZone = InvGui:WaitForChild("Tickets") -- Brother of ShopFrame
 
 local ScratchController = require(script.Parent.ScratchController)
 

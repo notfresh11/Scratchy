@@ -10,17 +10,15 @@
     },
 
     "ServerScriptService": {
-      "$path": {
-        "path": "src/server",
-        "type": "folder"
+      "Server": {
+        "$path": "src/server"
       }
     },
 
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "$path": {
-          "path": "src/client",
-          "type": "folder"
+        "Client": {
+          "$path": "src/client"
         }
       }
     },
