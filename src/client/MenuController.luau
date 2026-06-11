@@ -87,6 +87,7 @@ InvFrame.Visible = false
 InvTicketsZone.Visible = false
 ShopTicketsFolder.Visible = false
 
+-- Hide Scratch GUIs
 for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGUI"}) do
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if gui then
@@ -98,6 +99,7 @@ for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGU
 	end
 end
 
+-- Main Button Logic
 ShopButt.MouseButton1Click:Connect(function()
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
@@ -136,24 +138,28 @@ InvClose.MouseButton1Click:Connect(function()
 	InvTicketsZone.Visible = false
 end)
 
--- ONLY HANDLE TICKETS BUTTONS FOR MVP
-local ticketsShopButt = ShopFrame:WaitForChild("TicketsSHOP")
-local ticketsInvButt = InvFrame:WaitForChild("TicketsINV")
+-- MVP Tab Logic: Only handle Tickets buttons
+local ticketsShopButt = ShopFrame:FindFirstChild("TicketsSHOP")
+local ticketsInvButt = InvFrame:FindFirstChild("TicketsINV")
 
-ticketsShopButt.MouseButton1Click:Connect(function()
-	ShopTicketsFolder.Visible = true
-end)
+if ticketsShopButt then
+	ticketsShopButt.MouseButton1Click:Connect(function()
+		ShopTicketsFolder.Visible = true
+	end)
+	setupHover(ticketsShopButt)
+end
 
-ticketsInvButt.MouseButton1Click:Connect(function()
-	InvTicketsZone.Visible = true
-end)
+if ticketsInvButt then
+	ticketsInvButt.MouseButton1Click:Connect(function()
+		InvTicketsZone.Visible = true
+	end)
+	setupHover(ticketsInvButt)
+end
 
 setupHover(ShopButt)
 setupHover(InvButt)
-setupHover(ticketsShopButt)
-setupHover(ticketsInvButt)
 
-print("MenuController: UI references initialized successfully.")
+print("MenuController: UI references initialized successfully (MVP CLEAN MODE).")
 
 return {
 	smartPopupOpen = smartPopupOpen,

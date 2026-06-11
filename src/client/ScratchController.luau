@@ -31,7 +31,7 @@ function ScratchController.OpenScratch(ticketName: string)
 		return
 	end
 
-	local mainFrame = gui:FindFirstChildOfClass("Frame")
+	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
 	if not mainFrame then return end
 
 	-- Reset and Cleanup
@@ -54,9 +54,12 @@ function ScratchController.OpenScratch(ticketName: string)
 				sc.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				sc.Text = "?"
 
-				-- If square was already revealed, restore it
-				if session and session[tostring(i)] ~= nil then
-					local isMatch = session[tostring(i)]
+				-- Use session[i] or session[tostring(i)] depending on remote behavior
+				-- Roblox usually packs numeric keys into an array
+				if session and (session[i] ~= nil or session[tostring(i)] ~= nil) then
+					local isMatch = session[i]
+					if isMatch == nil then isMatch = session[tostring(i)] end
+
 					sc.BackgroundColor3 = isMatch and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 					sc.Text = isMatch and "GREEN" or "RED"
 				end
@@ -98,7 +101,7 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if not gui then return end
 
-	local mainFrame = gui:FindFirstChildOfClass("Frame")
+	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
 	local iconBg = mainFrame and mainFrame:FindFirstChild("ICONBG")
 	local sc = iconBg and iconBg:FindFirstChild("SC" .. squareIndex)
 
