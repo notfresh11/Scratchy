@@ -12,13 +12,13 @@ local MainFrame = MainGui:WaitForChild("MainFrame")
 local InvButt = MainFrame:WaitForChild("InvButt")
 local ShopButt = MainFrame:WaitForChild("ShopButt")
 
--- Shop UI (Hierarhie: ShopGUI -> ShopFrame, Tickets)
+-- Shop UI
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
 local ShopFrame = ShopGui:WaitForChild("ShopFrame")
 local ShopClose = ShopFrame:WaitForChild("CloseButt")
 local ShopTicketsFolder = ShopGui:WaitForChild("Tickets")
 
--- Inventory UI (Hierarhie: InvGUI -> ShopFrame, Tickets)
+-- Inventory UI
 local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("ShopFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
@@ -81,19 +81,6 @@ local function setupHover(button)
 	end)
 end
 
-local function setupTabs(buttons, folders)
-	for i, button in ipairs(buttons) do
-		button.MouseButton1Click:Connect(function()
-			for _, folder in ipairs(folders) do
-				if folder then folder.Visible = false end
-			end
-			if folders[i] then
-				folders[i].Visible = true
-			end
-		end)
-	end
-end
-
 -- Hide all UI on Start
 ShopFrame.Visible = false
 InvFrame.Visible = false
@@ -149,26 +136,22 @@ InvClose.MouseButton1Click:Connect(function()
 	InvTicketsZone.Visible = false
 end)
 
--- Shop Tabs (Hierarhie: ShopFrame -> TicketsSHOP, ItemsSHOP, MoneySHOP, PrestigeSHOP)
-local shopButtons = {
-	ShopFrame:WaitForChild("TicketsSHOP"),
-	ShopFrame:WaitForChild("ItemsSHOP"),
-	ShopFrame:WaitForChild("MoneySHOP"),
-	ShopFrame:WaitForChild("PrestigeSHOP")
-}
-setupTabs(shopButtons, {ShopTicketsFolder})
+-- ONLY HANDLE TICKETS BUTTONS FOR MVP
+local ticketsShopButt = ShopFrame:WaitForChild("TicketsSHOP")
+local ticketsInvButt = InvFrame:WaitForChild("TicketsINV")
 
--- Inv Tabs (Hierarhie: ShopFrame -> TicketsINV, ItemsINV)
-local invButtons = {
-	InvFrame:WaitForChild("TicketsINV"),
-	InvFrame:WaitForChild("ItemsINV")
-}
-setupTabs(invButtons, {InvTicketsZone})
+ticketsShopButt.MouseButton1Click:Connect(function()
+	ShopTicketsFolder.Visible = true
+end)
+
+ticketsInvButt.MouseButton1Click:Connect(function()
+	InvTicketsZone.Visible = true
+end)
 
 setupHover(ShopButt)
 setupHover(InvButt)
-for _, btn in ipairs(shopButtons) do setupHover(btn) end
-for _, btn in ipairs(invButtons) do setupHover(btn) end
+setupHover(ticketsShopButt)
+setupHover(ticketsInvButt)
 
 print("MenuController: UI references initialized successfully.")
 

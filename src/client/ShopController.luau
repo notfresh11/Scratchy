@@ -12,12 +12,13 @@ local TicketsFolder = ShopGui:WaitForChild("Tickets")
 local MenuController = require(script.Parent.MenuController)
 
 local function setupShop()
+	-- Buy Buttons
 	for _, ticketFrame in ipairs(TicketsFolder:GetChildren()) do
 		if ticketFrame:IsA("Frame") then
 			local buyButt = ticketFrame:FindFirstChild("BUYButt")
 			local infoButt = ticketFrame:FindFirstChild("INFOButt")
 
-			local ticketName = ticketFrame.Name:gsub("T", "") -- SimpleT -> Simple
+			local ticketName = ticketFrame.Name:gsub("T", "")
 
 			if buyButt then
 				MenuController.setupHover(buyButt)
