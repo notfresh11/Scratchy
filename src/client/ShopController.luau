@@ -7,6 +7,7 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 local BuyTicketEvent = Events:WaitForChild("BuyTicketEvent")
 
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
+local ShopFrame = ShopGui:WaitForChild("ShopFrame")
 local TicketsFolder = ShopFrame:WaitForChild("Tickets")
 
 local MenuController = require(script.Parent.MenuController)
