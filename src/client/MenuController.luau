@@ -17,6 +17,11 @@ local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("InvFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
 
+-- Fix for Camera Block: Ensure main frames are not "Active" so they don't capture mouse clicks
+MainFrame.Active = false
+ShopFrame.Active = false
+InvFrame.Active = false
+
 local originalSizes = {}
 
 local function smartPopupOpen(frame)
@@ -89,7 +94,10 @@ for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGU
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if gui then
 		local frame = gui:FindFirstChildOfClass("Frame")
-		if frame then frame.Visible = false end
+		if frame then
+			frame.Visible = false
+			frame.Active = false -- Ensure camera isn't blocked by these either
+		end
 	end
 end
 
