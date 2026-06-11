@@ -103,7 +103,7 @@ if ShopTicketsFolder then ShopTicketsFolder.Visible = false end
 for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGUI"}) do
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if gui then
-		local frame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
+		local frame = gui:FindFirstChildOfClass("Frame")
 		if frame then
 			originalSizes[frame] = frame.Size
 			frame.Visible = false
