@@ -1,4 +1,6 @@
 -- Client entry point
+print("Client init - Starting Spree Simulator UI")
+
 local Client = script.Parent
 
 -- Initialize Controllers
@@ -8,4 +10,4 @@ require(Client.ShopController)
 require(Client.ScratchController)
 require(Client.ZoneController)
 
-print("Client initialized successfully - Spree Simulator MVP")
+print("Client init - Controllers Loaded Successfully")

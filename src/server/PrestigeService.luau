@@ -9,7 +9,12 @@ local PRESTIGE_THRESHOLD = 10000
 
 -- Setup RemoteFunction
 local function setupCommunication()
-	local eventsFolder = ReplicatedStorage:WaitForChild("Events")
+	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+	if not eventsFolder then
+		eventsFolder = Instance.new("Folder")
+		eventsFolder.Name = "Events"
+		eventsFolder.Parent = ReplicatedStorage
+	end
 
 	local prestigeRequest = eventsFolder:FindFirstChild("PrestigeRequest")
 	if not prestigeRequest then
