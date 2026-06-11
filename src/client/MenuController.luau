@@ -4,17 +4,28 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
+-- Helper function to find frames robustly
+local function getFrame(parent, name)
+	local frame = parent:FindFirstChild(name)
+	if not frame then
+		-- Fallback: Find the first Frame if the specific name is missing
+		frame = parent:FindFirstChildOfClass("Frame")
+	end
+	return frame
+end
+
 local MainGui = PlayerGui:WaitForChild("Main")
-local MainFrame = MainGui:WaitForChild("MainFrame")
+local MainFrame = getFrame(MainGui, "MainFrame")
 local ShopButt = MainFrame:WaitForChild("ShopButt")
 local InvButt = MainFrame:WaitForChild("InvButt")
 
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
-local ShopFrame = ShopGui:WaitForChild("ShopFrame")
+local ShopFrame = getFrame(ShopGui, "ShopFrame")
 local ShopClose = ShopFrame:WaitForChild("CloseButt")
 
 local InvGui = PlayerGui:WaitForChild("InvGUI")
-local InvFrame = InvGui:WaitForChild("InvFrame")
+-- User noted InvFrame is actually called ShopFrame in InvGUI in Studio
+local InvFrame = getFrame(InvGui, "InvFrame") or getFrame(InvGui, "ShopFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
 
 -- Fix for Camera Block: Ensure main frames are not "Active" so they don't capture mouse clicks
@@ -142,7 +153,8 @@ local invButtons = {
 	InvFrame:WaitForChild("TicketsINV"),
 	InvFrame:WaitForChild("ItemsINV")
 }
-local invTicketsZone = InvFrame:WaitForChild("Tickets")
+-- Tickets folder is either a child of InvFrame or InvGUI
+local invTicketsZone = InvFrame:FindFirstChild("Tickets") or InvGui:FindFirstChild("Tickets")
 setupTabs(InvFrame, invButtons, {invTicketsZone})
 
 setupHover(ShopButt)
