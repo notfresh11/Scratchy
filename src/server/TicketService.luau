@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
+local Players = game:GetService("Players")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataService
@@ -82,28 +82,36 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 	local config = GameConfig.Tickets[ticketName]
 	if not config then return end
 
+	local userId = tostring(player.UserId)
 	local inventory = player:FindFirstChild("Inventory")
 	local ticketValue = inventory and inventory:FindFirstChild(ticketName .. "Ticket")
-	if not ticketValue or ticketValue.Value <= 0 then return end
 
-	local userId = tostring(player.UserId)
-	if not playerSessions[userId] then playerSessions[userId] = {} end
+	-- Check if session already exists
+	if not (playerSessions[userId] and playerSessions[userId][ticketName]) then
+		-- No active session, check if player has a ticket to start one
+		if not ticketValue or ticketValue.Value <= 0 then return end
 
-	if not playerSessions[userId][ticketName] then
+		-- START SESSION & CONSUME TICKET
+		if not playerSessions[userId] then playerSessions[userId] = {} end
 		playerSessions[userId][ticketName] = {}
 		ticketValue.Value -= 1
+		print("Ticket consumed for " .. player.Name .. " (Started Scratching " .. ticketName .. ")")
 	end
 
 	local session = playerSessions[userId][ticketName]
+
+	-- If square already revealed, resend result (idempotency)
 	if session[squareIndex] ~= nil then
 		revealSquareEvent:FireClient(player, ticketName, squareIndex, session[squareIndex])
 		return
 	end
 
+	-- RNG Logic
 	local isMatch = math.random() <= config.WinChancePerSquare
 	session[squareIndex] = isMatch
 	revealSquareEvent:FireClient(player, ticketName, squareIndex, isMatch)
 
+	-- Check for reward
 	local revealedCount = 0
 	local matchesCount = 0
 	for i = 1, 3 do
@@ -131,6 +139,7 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 			end
 		end
 
+		-- Clear Session
 		playerSessions[userId][ticketName] = nil
 	end
 end
@@ -141,6 +150,11 @@ function TicketService.Init()
 	buyTicketFunc.OnServerInvoke = onBuyTicket
 	getSessionFunc.OnServerInvoke = onGetSession
 	revealSquareEvent.OnServerEvent:Connect(onRevealSquare)
+
+	-- CLEANUP MEMORY LEAK
+	Players.PlayerRemoving:Connect(function(player)
+		playerSessions[tostring(player.UserId)] = nil
+	end)
 end
 
 TicketService.Init()

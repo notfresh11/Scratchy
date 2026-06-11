@@ -15,11 +15,13 @@ Zone.Touched:Connect(function(hit)
 	if player == Player then
 		if not ShopFrame.Visible then
 			MenuController.smartPopupOpen(ShopFrame)
-			-- Optionally close inventory
+
 			local InvGui = PlayerGui:WaitForChild("InvGUI")
-			local InvFrame = InvGui:WaitForChild("InvFrame")
-			if InvFrame.Visible then
+			local InvFrame = InvGui:FindFirstChild("ShopFrame")
+			local InvTicketsZone = InvGui:FindFirstChild("Tickets")
+			if InvFrame and InvFrame.Visible then
 				MenuController.smartPopupClose(InvFrame)
+				if InvTicketsZone then InvTicketsZone.Visible = false end
 			end
 		end
 	end

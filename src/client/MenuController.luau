@@ -4,31 +4,26 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
--- Helper function to find frames robustly
-local function getFrame(parent, name)
-	local frame = parent:FindFirstChild(name)
-	if not frame then
-		-- Fallback: Find the first Frame if the specific name is missing
-		frame = parent:FindFirstChildOfClass("Frame")
-	end
-	return frame
-end
+print("MenuController: Initializing UI references...")
 
+-- Main HUD
 local MainGui = PlayerGui:WaitForChild("Main")
-local MainFrame = getFrame(MainGui, "MainFrame")
-local ShopButt = MainFrame:WaitForChild("ShopButt")
+local MainFrame = MainGui:WaitForChild("MainFrame")
 local InvButt = MainFrame:WaitForChild("InvButt")
+local ShopButt = MainFrame:WaitForChild("ShopButt")
 
+-- Shop UI
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
-local ShopFrame = getFrame(ShopGui, "ShopFrame")
+local ShopFrame = ShopGui:WaitForChild("ShopFrame")
 local ShopClose = ShopFrame:WaitForChild("CloseButt")
 
+-- Inventory UI
 local InvGui = PlayerGui:WaitForChild("InvGUI")
--- User noted InvFrame is actually called ShopFrame in InvGUI in Studio
-local InvFrame = getFrame(InvGui, "InvFrame") or getFrame(InvGui, "ShopFrame")
+local InvFrame = InvGui:WaitForChild("ShopFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
+local InvTicketsZone = InvGui:WaitForChild("Tickets")
 
--- Fix for Camera Block: Ensure main frames are not "Active" so they don't capture mouse clicks
+-- Fix for Camera Block
 MainFrame.Active = false
 ShopFrame.Active = false
 InvFrame.Active = false
@@ -64,13 +59,13 @@ end
 local function setupHover(button)
 	local originalSize = button.Size
 	local originalColor = button.BackgroundColor3
-	local hoverColor = Color3.new(
-		math.min(originalColor.R + 0.1, 1),
-		math.min(originalColor.G + 0.1, 1),
-		math.min(originalColor.B + 0.1, 1)
-	)
 
 	button.MouseEnter:Connect(function()
+		local hoverColor = Color3.new(
+			math.min(originalColor.R + 0.1, 1),
+			math.min(originalColor.G + 0.1, 1),
+			math.min(originalColor.B + 0.1, 1)
+		)
 		TweenService:Create(button, TweenInfo.new(0.1), {
 			Size = UDim2.new(originalSize.X.Scale * 1.05, originalSize.X.Offset, originalSize.Y.Scale * 1.05, originalSize.Y.Offset),
 			BackgroundColor3 = hoverColor
@@ -101,13 +96,15 @@ end
 -- Hide all UI on Start
 ShopFrame.Visible = false
 InvFrame.Visible = false
+InvTicketsZone.Visible = false
+
 for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGUI"}) do
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if gui then
 		local frame = gui:FindFirstChildOfClass("Frame")
 		if frame then
 			frame.Visible = false
-			frame.Active = false -- Ensure camera isn't blocked by these either
+			frame.Active = false
 		end
 	end
 end
@@ -116,7 +113,10 @@ ShopButt.MouseButton1Click:Connect(function()
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
 	else
-		if InvFrame.Visible then smartPopupClose(InvFrame) end
+		if InvFrame.Visible then
+			smartPopupClose(InvFrame)
+			InvTicketsZone.Visible = false
+		end
 		smartPopupOpen(ShopFrame)
 	end
 end)
@@ -124,9 +124,11 @@ end)
 InvButt.MouseButton1Click:Connect(function()
 	if InvFrame.Visible then
 		smartPopupClose(InvFrame)
+		InvTicketsZone.Visible = false
 	else
 		if ShopFrame.Visible then smartPopupClose(ShopFrame) end
 		smartPopupOpen(InvFrame)
+		InvTicketsZone.Visible = true
 	end
 end)
 
@@ -136,8 +138,10 @@ end)
 
 InvClose.MouseButton1Click:Connect(function()
 	smartPopupClose(InvFrame)
+	InvTicketsZone.Visible = false
 end)
 
+-- Shop Tabs
 local shopButtons = {
 	ShopFrame:WaitForChild("TicketsSHOP"),
 	ShopFrame:WaitForChild("ItemsSHOP"),
@@ -149,18 +153,19 @@ local shopFolders = {
 }
 setupTabs(ShopFrame, shopButtons, shopFolders)
 
+-- Inv Tabs
 local invButtons = {
 	InvFrame:WaitForChild("TicketsINV"),
 	InvFrame:WaitForChild("ItemsINV")
 }
--- Tickets folder is either a child of InvFrame or InvGUI
-local invTicketsZone = InvFrame:FindFirstChild("Tickets") or InvGui:FindFirstChild("Tickets")
-setupTabs(InvFrame, invButtons, {invTicketsZone})
+setupTabs(InvFrame, invButtons, {InvTicketsZone})
 
 setupHover(ShopButt)
 setupHover(InvButt)
 for _, btn in ipairs(shopButtons) do setupHover(btn) end
 for _, btn in ipairs(invButtons) do setupHover(btn) end
+
+print("MenuController: UI references initialized successfully.")
 
 return {
 	smartPopupOpen = smartPopupOpen,

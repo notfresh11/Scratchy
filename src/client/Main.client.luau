@@ -9,5 +9,6 @@ require(Client.InventoryController)
 require(Client.ShopController)
 require(Client.ScratchController)
 require(Client.ZoneController)
+require(Client.AutoScratchController)
 
 print("Client init - Controllers Loaded Successfully")
