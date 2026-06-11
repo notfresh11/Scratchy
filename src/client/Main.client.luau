@@ -3,12 +3,24 @@ print("Client init - Starting Spree Simulator UI")
 
 local Client = script.Parent
 
--- Initialize Controllers
-require(Client.MenuController)
-require(Client.InventoryController)
-require(Client.ShopController)
-require(Client.ScratchController)
-require(Client.ZoneController)
-require(Client.AutoScratchController)
+local function safeRequire(moduleScript)
+	print("Client init - Requiring: " .. moduleScript.Name)
+	local success, result = pcall(function()
+		return require(moduleScript)
+	end)
+	if not success then
+		warn("Client init - Error requiring " .. moduleScript.Name .. ": " .. tostring(result))
+	else
+		print("Client init - Loaded: " .. moduleScript.Name)
+	end
+end
 
-print("Client init - Controllers Loaded Successfully")
+-- Initialize Controllers sequentially
+safeRequire(Client:WaitForChild("MenuController"))
+safeRequire(Client:WaitForChild("InventoryController"))
+safeRequire(Client:WaitForChild("ShopController"))
+safeRequire(Client:WaitForChild("ScratchController"))
+safeRequire(Client:WaitForChild("ZoneController"))
+safeRequire(Client:WaitForChild("AutoScratchController"))
+
+print("Client init - All Controllers Initialization Attempted")

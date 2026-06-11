@@ -12,12 +12,13 @@ local MainFrame = MainGui:WaitForChild("MainFrame")
 local InvButt = MainFrame:WaitForChild("InvButt")
 local ShopButt = MainFrame:WaitForChild("ShopButt")
 
--- Shop UI
+-- Shop UI (Hierarhie: ShopGUI -> ShopFrame, Tickets)
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
 local ShopFrame = ShopGui:WaitForChild("ShopFrame")
 local ShopClose = ShopFrame:WaitForChild("CloseButt")
+local ShopTicketsFolder = ShopGui:WaitForChild("Tickets")
 
--- Inventory UI
+-- Inventory UI (Hierarhie: InvGUI -> ShopFrame, Tickets)
 local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("ShopFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
@@ -80,11 +81,11 @@ local function setupHover(button)
 	end)
 end
 
-local function setupTabs(container, buttons, folders)
+local function setupTabs(buttons, folders)
 	for i, button in ipairs(buttons) do
 		button.MouseButton1Click:Connect(function()
 			for _, folder in ipairs(folders) do
-				folder.Visible = false
+				if folder then folder.Visible = false end
 			end
 			if folders[i] then
 				folders[i].Visible = true
@@ -97,11 +98,12 @@ end
 ShopFrame.Visible = false
 InvFrame.Visible = false
 InvTicketsZone.Visible = false
+ShopTicketsFolder.Visible = false
 
 for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGUI"}) do
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if gui then
-		local frame = gui:FindFirstChildOfClass("Frame")
+		local frame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
 		if frame then
 			frame.Visible = false
 			frame.Active = false
@@ -112,12 +114,14 @@ end
 ShopButt.MouseButton1Click:Connect(function()
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
+		ShopTicketsFolder.Visible = false
 	else
 		if InvFrame.Visible then
 			smartPopupClose(InvFrame)
 			InvTicketsZone.Visible = false
 		end
 		smartPopupOpen(ShopFrame)
+		ShopTicketsFolder.Visible = true
 	end
 end)
 
@@ -126,7 +130,10 @@ InvButt.MouseButton1Click:Connect(function()
 		smartPopupClose(InvFrame)
 		InvTicketsZone.Visible = false
 	else
-		if ShopFrame.Visible then smartPopupClose(ShopFrame) end
+		if ShopFrame.Visible then
+			smartPopupClose(ShopFrame)
+			ShopTicketsFolder.Visible = false
+		end
 		smartPopupOpen(InvFrame)
 		InvTicketsZone.Visible = true
 	end
@@ -134,6 +141,7 @@ end)
 
 ShopClose.MouseButton1Click:Connect(function()
 	smartPopupClose(ShopFrame)
+	ShopTicketsFolder.Visible = false
 end)
 
 InvClose.MouseButton1Click:Connect(function()
@@ -141,24 +149,21 @@ InvClose.MouseButton1Click:Connect(function()
 	InvTicketsZone.Visible = false
 end)
 
--- Shop Tabs
+-- Shop Tabs (Hierarhie: ShopFrame -> TicketsSHOP, ItemsSHOP, MoneySHOP, PrestigeSHOP)
 local shopButtons = {
 	ShopFrame:WaitForChild("TicketsSHOP"),
 	ShopFrame:WaitForChild("ItemsSHOP"),
 	ShopFrame:WaitForChild("MoneySHOP"),
 	ShopFrame:WaitForChild("PrestigeSHOP")
 }
-local shopFolders = {
-	ShopFrame:WaitForChild("Tickets")
-}
-setupTabs(ShopFrame, shopButtons, shopFolders)
+setupTabs(shopButtons, {ShopTicketsFolder})
 
--- Inv Tabs
+-- Inv Tabs (Hierarhie: ShopFrame -> TicketsINV, ItemsINV)
 local invButtons = {
 	InvFrame:WaitForChild("TicketsINV"),
 	InvFrame:WaitForChild("ItemsINV")
 }
-setupTabs(InvFrame, invButtons, {InvTicketsZone})
+setupTabs(invButtons, {InvTicketsZone})
 
 setupHover(ShopButt)
 setupHover(InvButt)
