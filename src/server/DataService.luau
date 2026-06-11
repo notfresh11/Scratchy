@@ -106,16 +106,16 @@ function DataService.Init()
 			setupLeaderstats(player)
 		end)
 	end
-end
 
--- Bind To Close to ensure data saves on server shutdown
-game:BindToClose(function()
-	for _, player in ipairs(Players:GetPlayers()) do
-		task.spawn(saveData, player)
-	end
-	-- Wait for all tasks to complete or timeout
-	task.wait(2)
-end)
+	-- Bind To Close to ensure data saves on server shutdown
+	game:BindToClose(function()
+		for _, player in ipairs(Players:GetPlayers()) do
+			task.spawn(saveData, player)
+		end
+		-- Wait for all tasks to complete or timeout
+		task.wait(2)
+	end)
+end
 
 DataService.Init()
 
