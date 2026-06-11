@@ -7,7 +7,8 @@ local InvTicketsTemplates = ReplicatedStorage:WaitForChild("InvTickets")
 local InventoryFolder = Player:WaitForChild("Inventory")
 
 local InvGui = PlayerGui:WaitForChild("InvGUI")
-local TicketsZone = InvGui:WaitForChild("Tickets")
+local InvFrame = InvGui:WaitForChild("ShopFrame")
+local TicketsZone = InvGui:WaitForChild("Tickets") -- Brother of ShopFrame
 
 local ScratchController = require(script.Parent.ScratchController)
 
@@ -35,12 +36,7 @@ local function updateInventory()
 				local clone = template:Clone()
 				local displayName = ticketVal.Name:gsub("Ticket", ""):upper()
 				clone.Name = ticketVal.Name
-
-				local nameLabel = clone:FindFirstChild("Name")
-				if nameLabel then
-					nameLabel.Text = displayName .. " TICKET (x" .. ticketVal.Value .. ")"
-				end
-
+				clone:WaitForChild("Name").Text = displayName .. " TICKET (x" .. ticketVal.Value .. ")"
 				clone.Parent = TicketsZone
 
 				-- Connect Scratch Button
