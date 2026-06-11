@@ -7,8 +7,8 @@ local InvTicketsTemplates = ReplicatedStorage:WaitForChild("InvTickets")
 local InventoryFolder = Player:WaitForChild("Inventory")
 
 local InvGui = PlayerGui:WaitForChild("InvGUI")
-local InvFrame = InvGui:WaitForChild("ShopFrame")
-local TicketsZone = InvGui:WaitForChild("Tickets") -- Brother of ShopFrame
+local InvFrame = InvGui:WaitForChild("InvFrame")
+local TicketsZone = InvFrame:WaitForChild("Tickets") -- Brother of ShopFrame
 
 local ScratchController = require(script.Parent.ScratchController)
 

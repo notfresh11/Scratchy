@@ -21,7 +21,7 @@ local ShopClose = ShopFrame:WaitForChild("CloseButt")
 local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("InvFrame")
 local InvClose = InvFrame:WaitForChild("CloseButt")
-local InvTicketsZone = InvGui:WaitForChild("Tickets")
+local InvTicketsZone = InvFrame:WaitForChild("Tickets")
 
 -- Fix for Camera Block
 MainFrame.Active = false
