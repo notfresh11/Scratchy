@@ -1,7 +1,10 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerDataStore = DataStoreService:GetDataStore("PlayerData_v1")
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+
+local PlayerDataStore = DataStoreService:GetDataStore("PlayerData_v4")
 
 local DataService = {}
 
@@ -10,8 +13,13 @@ DataService.SessionData = {}
 
 -- Default data for new players
 local DEFAULT_DATA = {
-	Cash = 0,
-	Shards = 0
+	Cash = GameConfig.StartingCash,
+	Shards = 0,
+	Inventory = {
+		SimpleTicket = 0,
+		RareTicket = 0,
+		GoldenTicket = 0
+	}
 }
 
 -- Load data from DataStore
@@ -23,9 +31,17 @@ local function loadData(player: Player)
 
 	if success then
 		DataService.SessionData[userId] = result or table.clone(DEFAULT_DATA)
+
+		local session = DataService.SessionData[userId]
+		if session.Shards == nil then session.Shards = 0 end
+		if not session.Inventory then session.Inventory = table.clone(DEFAULT_DATA.Inventory) end
+		for k, v in pairs(DEFAULT_DATA.Inventory) do
+			if session.Inventory[k] == nil then
+				session.Inventory[k] = v
+			end
+		end
 	else
 		warn("Failed to load data for player " .. player.Name .. ": " .. tostring(result))
-		-- Optional: Kick player if data fails to load to prevent data loss or overwriting
 		player:Kick("Data failed to load. Please rejoin.")
 	end
 end
@@ -49,12 +65,13 @@ local function saveData(player: Player)
 end
 
 -- Setup leaderstats and values
-local function setupLeaderstats(player: Player)
+local function setupPlayerObjects(player: Player)
 	local userId = tostring(player.UserId)
 	local data = DataService.SessionData[userId]
 
 	if not data then return end
 
+	-- Leaderstats
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
@@ -69,7 +86,24 @@ local function setupLeaderstats(player: Player)
 	shards.Value = data.Shards
 	shards.Parent = leaderstats
 
-	-- Sync internal data when leaderstats change
+	-- Inventory Folder
+	local inventory = Instance.new("Folder")
+	inventory.Name = "Inventory"
+	inventory.Parent = player
+
+	for ticketName, amount in pairs(data.Inventory) do
+		local val = Instance.new("IntValue")
+		val.Name = ticketName
+		val.Value = amount
+		val.Parent = inventory
+
+		val.Changed:Connect(function(newValue)
+			if DataService.SessionData[userId] then
+				DataService.SessionData[userId].Inventory[ticketName] = newValue
+			end
+		end)
+	end
+
 	cash.Changed:Connect(function(newValue)
 		if DataService.SessionData[userId] then
 			DataService.SessionData[userId].Cash = newValue
@@ -92,27 +126,24 @@ end
 function DataService.Init()
 	Players.PlayerAdded:Connect(function(player)
 		loadData(player)
-		setupLeaderstats(player)
+		setupPlayerObjects(player)
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		saveData(player)
 	end)
 
-	-- Handle existing players (for Studio testing / reloads)
 	for _, player in ipairs(Players:GetPlayers()) do
 		task.spawn(function()
 			loadData(player)
-			setupLeaderstats(player)
+			setupPlayerObjects(player)
 		end)
 	end
 
-	-- Bind To Close to ensure data saves on server shutdown
 	game:BindToClose(function()
 		for _, player in ipairs(Players:GetPlayers()) do
 			task.spawn(saveData, player)
 		end
-		-- Wait for all tasks to complete or timeout
 		task.wait(2)
 	end)
 end

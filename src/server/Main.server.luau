@@ -3,7 +3,8 @@ local Server = script.Parent
 
 -- Require services to initialize them
 local DataService = require(Server.DataService)
-local ScratchService = require(Server.ScratchService)
+local TicketService = require(Server.TicketService)
 local PrestigeService = require(Server.PrestigeService)
+local LeaderboardService = require(Server.LeaderboardService)
 
-print("Server initialized successfully")
+print("Server initialized successfully - Spree Simulator MVP")
