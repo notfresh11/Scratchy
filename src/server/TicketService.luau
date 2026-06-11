@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Players = game:GetService("Players")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataService
@@ -39,7 +40,6 @@ local function setupCommunication()
 		getSession.Parent = eventsFolder
 	end
 
-	-- Ensuring ScratchTicketEvent exists to satisfy hierarchy expectations
 	local scratchTicket = eventsFolder:FindFirstChild("ScratchTicketEvent")
 	if not scratchTicket then
 		scratchTicket = Instance.new("RemoteEvent")
