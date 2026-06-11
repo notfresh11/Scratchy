@@ -6,42 +6,18 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 
 print("MenuController: Initializing UI references...")
 
--- Utility for Pop-up Tweens
-local originalSizes = {}
-
+-- Utility for Pop-up Tweens (SIMPLIFIED FOR DEBUGGING)
 local function smartPopupOpen(frame)
 	if not frame then return end
-	-- Capture size only if it's not zero, or if we haven't captured it yet
-	if not originalSizes[frame] or (originalSizes[frame].X.Scale == 0 and originalSizes[frame].X.Offset == 0) then
-		if frame.Size.X.Scale ~= 0 or frame.Size.X.Offset ~= 0 then
-			originalSizes[frame] = frame.Size
-		end
-	end
-
-	local targetSize = originalSizes[frame] or UDim2.new(0.5, 0, 0.5, 0)
-
-	frame.Size = UDim2.new(0, 0, 0, 0)
+	print("MenuController: Opening Frame " .. frame.Name)
 	frame.Visible = true
-
-	TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = targetSize
-	}):Play()
+	-- Removed Tweening and Size manipulation to ensure visibility
 end
 
 local function smartPopupClose(frame)
 	if not frame then return end
-	local targetSize = originalSizes[frame] or frame.Size
-
-	local tween = TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-		Size = UDim2.new(0, 0, 0, 0)
-	})
-
-	tween.Completed:Connect(function()
-		frame.Visible = false
-		frame.Size = targetSize
-	end)
-
-	tween:Play()
+	print("MenuController: Closing Frame " .. frame.Name)
+	frame.Visible = false
 end
 
 local function setupHover(button)
@@ -69,11 +45,14 @@ local function setupHover(button)
 	end)
 end
 
--- 1. WAIT FOR CRITICAL HUD ELEMENTS (MAIN)
+-- 1. WAIT FOR HUD (MAIN)
 local MainGui = PlayerGui:WaitForChild("Main", 10)
 local MainFrame = MainGui and MainGui:WaitForChild("MainFrame", 10)
 local InvButt = MainFrame and MainFrame:WaitForChild("InvButt", 10)
 local ShopButt = MainFrame and MainFrame:WaitForChild("ShopButt", 10)
+
+if InvButt then print("MenuController: InvButt found") end
+if ShopButt then print("MenuController: ShopButt found") end
 
 -- 2. WAIT FOR SHOP & INV GUI
 local ShopGui = PlayerGui:WaitForChild("ShopGUI", 10)
@@ -84,14 +63,12 @@ local InvGui = PlayerGui:WaitForChild("InvGUI", 10)
 local InvFrame = InvGui and InvGui:WaitForChild("ShopFrame", 10)
 local InvTicketsZone = InvGui and InvGui:WaitForChild("Tickets", 10)
 
--- Capture sizes immediately
-if ShopFrame then originalSizes[ShopFrame] = ShopFrame.Size end
-if InvFrame then originalSizes[InvFrame] = InvFrame.Size end
-
--- Fix for Camera Block
-if MainFrame then MainFrame.Active = false end
-if ShopFrame then ShopFrame.Active = false end
-if InvFrame then InvFrame.Active = false end
+-- Fix for Camera Block & Ensuring interaction
+if MainFrame then MainFrame.Active = false MainFrame.ZIndex = 5 end
+if ShopFrame then ShopFrame.Active = false ShopFrame.ZIndex = 10 end
+if InvFrame then InvFrame.Active = false InvFrame.ZIndex = 10 end
+if InvButt then InvButt.ZIndex = 15 end
+if ShopButt then ShopButt.ZIndex = 15 end
 
 -- 3. HIDE EVERYTHING AT START
 if ShopFrame then ShopFrame.Visible = false end
@@ -99,23 +76,10 @@ if InvFrame then InvFrame.Visible = false end
 if InvTicketsZone then InvTicketsZone.Visible = false end
 if ShopTicketsFolder then ShopTicketsFolder.Visible = false end
 
--- Hide Scratch GUIs
-for _, guiName in ipairs({"ScratchSimpleGUI", "ScratchRareGUI", "ScratchGOLDENGUI"}) do
-	local gui = PlayerGui:FindFirstChild(guiName)
-	if gui then
-		local frame = gui:FindFirstChildOfClass("Frame")
-		if frame then
-			originalSizes[frame] = frame.Size
-			frame.Visible = false
-			frame.Active = false
-		end
-	end
-end
-
--- 4. CONNECT MAIN BUTTONS IMMEDIATELY
+-- 4. CONNECT MAIN BUTTONS
 if ShopButt and ShopFrame then
 	ShopButt.MouseButton1Click:Connect(function()
-		print("ShopButt Clicked")
+		print("MenuController: ShopButt Clicked")
 		if ShopFrame.Visible then
 			smartPopupClose(ShopFrame)
 			if ShopTicketsFolder then ShopTicketsFolder.Visible = false end
@@ -133,7 +97,7 @@ end
 
 if InvButt and InvFrame then
 	InvButt.MouseButton1Click:Connect(function()
-		print("InvButt Clicked")
+		print("MenuController: InvButt Clicked")
 		if InvFrame.Visible then
 			smartPopupClose(InvFrame)
 			if InvTicketsZone then InvTicketsZone.Visible = false end
@@ -170,7 +134,7 @@ if InvFrame then
 	end
 end
 
--- 6. TICKET TABS (ONLY ONES WE HAVE)
+-- 6. TICKET TABS
 if ShopFrame then
 	local ticketsShopButt = ShopFrame:FindFirstChild("TicketsSHOP")
 	if ticketsShopButt then
@@ -191,7 +155,7 @@ if InvFrame then
 	end
 end
 
-print("MenuController: UI references initialized successfully (MVP ROBUST MODE).")
+print("MenuController: UI initialized (DEBUG MODE - NO TWEENS).")
 
 return {
 	smartPopupOpen = smartPopupOpen,
