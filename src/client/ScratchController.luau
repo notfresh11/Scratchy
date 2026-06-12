@@ -29,6 +29,8 @@ local function closeAndDestroy()
 	local gui = currentGui
 	currentGui = nil -- Prevent double calls
 
+	print("ScratchController: Closing and destroying GUI.")
+
 	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
 	if mainFrame then
 		local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
@@ -37,7 +39,6 @@ local function closeAndDestroy()
 		closeTween.Completed:Connect(function()
 			cleanupConnections()
 			gui:Destroy()
-			print("ScratchController: GUI destroyed, state cleared.")
 		end)
 		closeTween:Play()
 	else
@@ -70,9 +71,17 @@ function ScratchController.OpenScratch(ticketName: string)
 		return
 	end
 
-	print("ScratchController: Cloning and opening " .. templateName)
+	-- 3. SYNC SESSION FROM SERVER FIRST
+	print("ScratchController: Requesting session from server...")
+	local session = GetScratchSession:InvokeServer(ticketName)
 
-	-- 3. CLONE AND SETUP
+	if not session then
+		print("ScratchController: No active session or tickets available.")
+		return
+	end
+
+	-- 4. CLONE AND SETUP
+	print("ScratchController: Cloning template " .. templateName)
 	local gui = template:Clone()
 	gui.Enabled = true
 	gui.DisplayOrder = 20
@@ -94,7 +103,7 @@ function ScratchController.OpenScratch(ticketName: string)
 		Size = targetSize
 	}):Play()
 
-	-- 4. CONNECT CLICKS
+	-- 5. POPULATE AND CONNECT
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
 	if iconBg then
 		for _, child in ipairs(iconBg:GetChildren()) do
@@ -102,19 +111,30 @@ function ScratchController.OpenScratch(ticketName: string)
 			if indexStr then
 				local i = tonumber(indexStr)
 				child.ZIndex = 30
+
+				-- Initial state
 				child.Text = "?"
 				child.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+
+				-- Restore from session
+				local result = session[i] or session[tostring(i)]
+				if result ~= nil then
+					child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+					child.Text = result and "GREEN" or "RED"
+				end
 
 				local originalBtnSize = child.Size
 
 				local conn = child.MouseButton1Click:Connect(function()
 					if child.Text == "?" then
-						-- Snappy click feedback
+						-- Snappy feedback
 						TweenService:Create(child, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 							Size = UDim2.new(originalBtnSize.X.Scale * 0.9, 0, originalBtnSize.Y.Scale * 0.9, 0)
 						}):Play()
 						task.delay(0.05, function()
-							TweenService:Create(child, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalBtnSize}):Play()
+							if child.Parent then
+								TweenService:Create(child, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalBtnSize}):Play()
+							end
 						end)
 
 						RevealSquareEvent:FireServer(ticketName, i)
@@ -133,24 +153,6 @@ function ScratchController.OpenScratch(ticketName: string)
 		end)
 		table.insert(activeConnections, conn)
 	end
-
-	-- SYNC SESSION (BACKGROUND)
-	task.spawn(function()
-		local session = GetScratchSession:InvokeServer(ticketName)
-		if gui.Parent and iconBg and session then
-			for _, child in ipairs(iconBg:GetChildren()) do
-				local indexStr = child.Name:match("%d+")
-				if indexStr then
-					local i = tonumber(indexStr)
-					local result = session[i] or session[tostring(i)]
-					if result ~= nil then
-						child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-						child.Text = result and "GREEN" or "RED"
-					end
-				end
-			end
-		end
-	end)
 end
 
 -- Listen for server results
@@ -190,7 +192,7 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 		end
 	end
 
-	-- Auto-close
+	-- Auto-close check
 	local revealedCount = 0
 	if iconBg then
 		for _, child in ipairs(iconBg:GetChildren()) do
