@@ -23,14 +23,26 @@ local function cleanupConnections()
 	activeConnections = {}
 end
 
--- Snappy Centering
+-- Reset the visual state of a scratch menu
+local function resetVisuals(mainFrame)
+	local iconBg = mainFrame:FindFirstChild("ICONBG")
+	if iconBg then
+		for _, child in ipairs(iconBg:GetChildren()) do
+			if child.Name:match("%d+") then
+				child.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				child.Text = "?"
+			end
+		end
+	end
+end
+
+-- Force centering and prepare for animation
 local function prepareFrame(frame)
 	if not frame then return end
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	if not originalSizes[frame] then
 		originalSizes[frame] = frame.Size
-		print("ScratchController: Prepared size for " .. frame.Name .. " -> " .. tostring(frame.Size))
 	end
 end
 
@@ -62,7 +74,10 @@ function ScratchController.OpenScratch(ticketName: string)
 
 	prepareFrame(mainFrame)
 
-	-- 2. START OPENING ANIMATION IMMEDIATELY (Centered Pop-In)
+	-- RESET VISUALS BEFORE SHOWING (Fixes the "old results" bug)
+	resetVisuals(mainFrame)
+
+	-- 2. START OPENING ANIMATION IMMEDIATELY
 	mainFrame.Visible = true
 	mainFrame.Size = UDim2.new(0.1, 0, 0.1, 0)
 
@@ -78,20 +93,14 @@ function ScratchController.OpenScratch(ticketName: string)
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
 
 	if iconBg then
-		print("ScratchController: Connecting squares...")
 		for _, child in ipairs(iconBg:GetChildren()) do
 			local indexStr = child.Name:match("%d+")
 			if indexStr then
 				local i = tonumber(indexStr)
-				print("ScratchController: Found square: " .. child.Name .. " as Index: " .. i)
-
-				child.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				child.Text = "?"
 				child.Active = true
-				child.ZIndex = 30 -- Ensure it's on top of background
+				child.ZIndex = 30
 
 				local conn = child.MouseButton1Click:Connect(function()
-					print("ScratchController: Clicked SC" .. i)
 					if child.Text == "?" then
 						-- Snappy click feedback
 						local btnSize = child.Size
@@ -102,22 +111,19 @@ function ScratchController.OpenScratch(ticketName: string)
 							TweenService:Create(child, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = btnSize}):Play()
 						end)
 
-						print("ScratchController: Firing RevealSquareEvent for " .. i)
+						print("ScratchController: Requesting reveal for square " .. i)
 						RevealSquareEvent:FireServer(ticketName, i)
 					end
 				end)
 				table.insert(activeConnections, conn)
 			end
 		end
-	else
-		warn("ScratchController: ICONBG NOT FOUND!")
 	end
 
 	-- Invoke server to catch up
 	task.spawn(function()
 		local session = GetScratchSession:InvokeServer(ticketName)
 		if iconBg and session then
-			print("ScratchController: Restoring session state...")
 			for _, child in ipairs(iconBg:GetChildren()) do
 				local indexStr = child.Name:match("%d+")
 				if indexStr then
@@ -135,8 +141,6 @@ end
 
 -- Listen for server results
 RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatch)
-	print("ScratchController: Revealed result for square " .. squareIndex .. ": " .. tostring(isMatch))
-
 	local firstLetter = ticketName:sub(1,1):upper()
 	local restOfName = ticketName:sub(2):lower()
 	local guiName = "Scratch" .. firstLetter .. restOfName .. "GUI"
@@ -176,7 +180,7 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 		end
 	end
 
-	-- Auto-close
+	-- Auto-close check
 	local revealedCount = 0
 	if iconBg then
 		for _, child in ipairs(iconBg:GetChildren()) do
@@ -187,15 +191,16 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	end
 
 	if revealedCount >= 3 then
-		task.delay(0.6, function()
+		task.delay(3, function() -- EXACTLY 3 SECONDS AS REQUESTED
 			if mainFrame and mainFrame.Visible then
-				print("ScratchController: Auto-closing " .. mainFrame.Name)
+				print("ScratchController: Auto-closing after 3s delay.")
 				local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 					Size = UDim2.new(0.1,0,0.1,0)
 				})
 				closeTween.Completed:Connect(function()
 					mainFrame.Visible = false
 					mainFrame.Size = originalSizes[mainFrame]
+					resetVisuals(mainFrame) -- Reset again for safety
 					cleanupConnections()
 					currentOpenTicket = nil
 				end)
