@@ -14,21 +14,24 @@ local MenuController = require(script.Parent.MenuController)
 local ScratchController = {}
 
 local currentGui = nil
-local activeConnections = {}
+local activeConnections = {} -- [GuiInstance] = {Connection, ...}
 
-local function cleanupConnections()
-	for _, conn in ipairs(activeConnections) do
-		conn:Disconnect()
+local function cleanupConnections(gui)
+	if not gui then return end
+	local connections = activeConnections[gui]
+	if connections then
+		for _, conn in ipairs(connections) do
+			conn:Disconnect()
+		end
+		activeConnections[gui] = nil
 	end
-	activeConnections = {}
 end
 
 local function closeAndDestroy(specificGui)
 	local gui = specificGui or currentGui
 	if not gui or not gui.Parent then return end
 
-	local isCurrent = (gui == currentGui)
-	if isCurrent then
+	if gui == currentGui then
 		currentGui = nil
 	end
 
@@ -40,18 +43,14 @@ local function closeAndDestroy(specificGui)
 			Size = UDim2.new(0.1, 0, 0.1, 0)
 		})
 		closeTween.Completed:Connect(function()
-			if isCurrent then
-				cleanupConnections()
-			end
+			cleanupConnections(gui)
 			if gui.Parent then
 				gui:Destroy()
 			end
 		end)
 		closeTween:Play()
 	else
-		if isCurrent then
-			cleanupConnections()
-		end
+		cleanupConnections(gui)
 		if gui.Parent then
 			gui:Destroy()
 		end
@@ -63,7 +62,7 @@ function ScratchController.OpenScratch(ticketName: string)
 	if currentGui then
 		local oldGui = currentGui
 		currentGui = nil
-		cleanupConnections()
+		cleanupConnections(oldGui)
 		oldGui:Destroy()
 	end
 
@@ -131,7 +130,9 @@ function ScratchController.OpenScratch(ticketName: string)
 				child.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 
 				-- Restore from session
-				local result = session[i] or session[tostring(i)]
+				local result = session[i]
+				if result == nil then result = session[tostring(i)] end
+
 				if result ~= nil then
 					revealedAtStart += 1
 					child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
@@ -155,7 +156,8 @@ function ScratchController.OpenScratch(ticketName: string)
 						RevealSquareEvent:FireServer(ticketName, i)
 					end
 				end)
-				table.insert(activeConnections, conn)
+				if not activeConnections[gui] then activeConnections[gui] = {} end
+				table.insert(activeConnections[gui], conn)
 			end
 		end
 	end
@@ -170,9 +172,10 @@ function ScratchController.OpenScratch(ticketName: string)
 	local closeButt = mainFrame:FindFirstChild("CloseButt")
 	if closeButt then
 		local conn = closeButt.MouseButton1Click:Connect(function()
-			closeAndDestroy()
+			closeAndDestroy(gui)
 		end)
-		table.insert(activeConnections, conn)
+		if not activeConnections[gui] then activeConnections[gui] = {} end
+		table.insert(activeConnections[gui], conn)
 	end
 end
 

@@ -106,7 +106,10 @@ end
 local function isSessionComplete(session)
 	local revealedCount = 0
 	for i = 1, 10 do
-		if session[tostring(i)] ~= nil or session[i] ~= nil then
+		local val = session[tostring(i)]
+		if val == nil then val = session[i] end
+
+		if val ~= nil then
 			revealedCount += 1
 		end
 	end
@@ -174,14 +177,18 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 		print("TicketService: Reveal result for " .. player.Name .. " -> " .. tostring(isMatch))
 	end
 
-	local finalResult = session[tostring(squareIndex)] or session[squareIndex]
+	local finalResult = session[tostring(squareIndex)]
+	if finalResult == nil then finalResult = session[squareIndex] end
+
 	revealSquareEvent:FireClient(player, ticketName, squareIndex, finalResult)
 
 	-- Check for completion
 	local revealedCount = 0
 	local matchesCount = 0
 	for i = 1, 10 do -- Search for all possible square indices
-		local res = session[tostring(i)] or session[i]
+		local res = session[tostring(i)]
+		if res == nil then res = session[i] end
+
 		if res ~= nil then
 			revealedCount += 1
 			if res == true then
