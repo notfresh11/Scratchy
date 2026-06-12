@@ -26,6 +26,13 @@ local function setupCommunication()
 		buyTicket.Parent = eventsFolder
 	end
 
+	local sellTicket = eventsFolder:FindFirstChild("SellTicketEvent")
+	if not sellTicket then
+		sellTicket = Instance.new("RemoteFunction")
+		sellTicket.Name = "SellTicketEvent"
+		sellTicket.Parent = eventsFolder
+	end
+
 	local revealSquare = eventsFolder:FindFirstChild("RevealSquareEvent")
 	if not revealSquare then
 		revealSquare = Instance.new("RemoteEvent")
@@ -47,10 +54,10 @@ local function setupCommunication()
 		scratchTicket.Parent = eventsFolder
 	end
 
-	return buyTicket, revealSquare, getSession
+	return buyTicket, sellTicket, revealSquare, getSession
 end
 
-local buyTicketFunc, revealSquareEvent, getSessionFunc = setupCommunication()
+local buyTicketFunc, sellTicketFunc, revealSquareEvent, getSessionFunc = setupCommunication()
 
 -- BUY TICKET
 local function onBuyTicket(player: Player, ticketName: string)
@@ -74,6 +81,32 @@ local function onBuyTicket(player: Player, ticketName: string)
 	ticketValue.Value += 1
 
 	return {Success = true}
+end
+
+-- SELL TICKET
+local function onSellTicket(player: Player, ticketName: string)
+	local cleanName = ticketName:gsub("Ticket", "")
+	local config = GameConfig.Tickets[cleanName]
+	if not config then return {Success = false, Error = "Invalid Ticket"} end
+
+	local inventory = player:FindFirstChild("Inventory")
+	local ticketValue = inventory and inventory:FindFirstChild(cleanName .. "Ticket")
+
+	if not ticketValue or ticketValue.Value <= 0 then
+		return {Success = false, Error = "You don't have this ticket"}
+	end
+
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local cashValue = leaderstats and leaderstats:FindFirstChild("Cash")
+
+	if not cashValue then return {Success = false, Error = "Data Error"} end
+
+	-- Sell for 50%
+	local sellPrice = math.floor(config.Cost * 0.5)
+	ticketValue.Value -= 1
+	cashValue.Value += sellPrice
+
+	return {Success = true, Price = sellPrice}
 end
 
 -- GET SESSION
@@ -149,6 +182,7 @@ function TicketService.Init()
 	DataService = require(script.Parent.DataService)
 
 	buyTicketFunc.OnServerInvoke = onBuyTicket
+	sellTicketFunc.OnServerInvoke = onSellTicket
 	getSessionFunc.OnServerInvoke = onGetSession
 	revealSquareEvent.OnServerEvent:Connect(onRevealSquare)
 

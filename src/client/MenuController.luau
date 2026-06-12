@@ -8,7 +8,7 @@ print("MenuController: Initializing UI references...")
 
 local originalSizes = {}
 
--- Utility for Pop-up Tweens
+-- Utility for Pop-up Tweens (Dopamine-tuned)
 local function smartPopupOpen(frame)
 	if not frame then return end
 	print("MenuController: Opening Frame " .. frame.Name)
@@ -18,9 +18,10 @@ local function smartPopupOpen(frame)
 	end
 
 	frame.Visible = true
-	frame.Size = UDim2.new(0, 0, 0, 0)
+	frame.Size = UDim2.new(originalSizes[frame].X.Scale * 0.7, 0, originalSizes[frame].Y.Scale * 0.7, 0)
 
-	local tween = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Faster, snappier bounce
+	local tween = TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[frame]
 	})
 	tween:Play()
@@ -30,7 +31,7 @@ local function smartPopupClose(frame)
 	if not frame then return end
 	print("MenuController: Closing Frame " .. frame.Name)
 
-	local tween = TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+	local tween = TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Size = UDim2.new(0, 0, 0, 0)
 	})
 
@@ -51,18 +52,18 @@ local function setupHover(button)
 
 	button.MouseEnter:Connect(function()
 		local hoverColor = Color3.new(
-			math.min(originalColor.R + 0.1, 1),
-			math.min(originalColor.G + 0.1, 1),
-			math.min(originalColor.B + 0.1, 1)
+			math.min(originalColor.R + 0.15, 1),
+			math.min(originalColor.G + 0.15, 1),
+			math.min(originalColor.B + 0.15, 1)
 		)
-		TweenService:Create(button, TweenInfo.new(0.1), {
-			Size = UDim2.new(originalBtnSize.X.Scale * 1.05, originalBtnSize.X.Offset, originalBtnSize.Y.Scale * 1.05, originalBtnSize.Y.Offset),
+		TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(originalBtnSize.X.Scale * 1.1, originalBtnSize.X.Offset, originalBtnSize.Y.Scale * 1.1, originalBtnSize.Y.Offset),
 			BackgroundColor3 = hoverColor
 		}):Play()
 	end)
 
 	button.MouseLeave:Connect(function()
-		TweenService:Create(button, TweenInfo.new(0.1), {
+		TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Size = originalBtnSize,
 			BackgroundColor3 = originalColor
 		}):Play()
@@ -94,50 +95,43 @@ ShopGui.DisplayOrder = 10
 InvGui.Enabled = true
 InvGui.DisplayOrder = 10
 
--- Capture original sizes before hiding
+-- Capture original sizes
 originalSizes[ShopFrame] = ShopFrame.Size
 originalSizes[InvFrame] = InvFrame.Size
 
--- Fix for Camera Block & Ensuring interaction
+-- Interactions
 MainFrame.Active = false
-ShopFrame.Active = true -- Frames themselves should be active to catch clicks
+ShopFrame.Active = true
 InvFrame.Active = true
 
 -- 3. HIDE EVERYTHING AT START
 ShopFrame.Visible = false
 InvFrame.Visible = false
-InvTicketsZone.Visible = false
-ShopTicketsFolder.Visible = false
+-- Containers should stay visible internally so they scale WITH the parent frame
+InvTicketsZone.Visible = true
+ShopTicketsFolder.Visible = true
 
 -- 4. CONNECT MAIN BUTTONS
 ShopButt.MouseButton1Click:Connect(function()
-	print("MenuController: ShopButt Clicked. Current Visibility: " .. tostring(ShopFrame.Visible))
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
-		ShopTicketsFolder.Visible = false
 	else
 		if InvFrame.Visible then
 			smartPopupClose(InvFrame)
-			InvTicketsZone.Visible = false
 		end
 		smartPopupOpen(ShopFrame)
-		ShopTicketsFolder.Visible = true
 	end
 end)
 setupHover(ShopButt)
 
 InvButt.MouseButton1Click:Connect(function()
-	print("MenuController: InvButt Clicked. Current Visibility: " .. tostring(InvFrame.Visible))
 	if InvFrame.Visible then
 		smartPopupClose(InvFrame)
-		InvTicketsZone.Visible = false
 	else
 		if ShopFrame.Visible then
 			smartPopupClose(ShopFrame)
-			ShopTicketsFolder.Visible = false
 		end
 		smartPopupOpen(InvFrame)
-		InvTicketsZone.Visible = true
 	end
 end)
 setupHover(InvButt)
@@ -147,7 +141,6 @@ local ShopClose = ShopFrame:FindFirstChild("CloseButt")
 if ShopClose then
 	ShopClose.MouseButton1Click:Connect(function()
 		smartPopupClose(ShopFrame)
-		ShopTicketsFolder.Visible = false
 	end)
 end
 
@@ -155,15 +148,15 @@ local InvClose = InvFrame:FindFirstChild("CloseButt")
 if InvClose then
 	InvClose.MouseButton1Click:Connect(function()
 		smartPopupClose(InvFrame)
-		InvTicketsZone.Visible = false
 	end)
 end
 
--- 6. TICKET TABS
+-- 6. TICKET TABS (Logic for switching tabs if you add more later)
 local ticketsShopButt = ShopFrame:FindFirstChild("TicketsSHOP")
 if ticketsShopButt then
 	ticketsShopButt.MouseButton1Click:Connect(function()
 		ShopTicketsFolder.Visible = true
+		-- Hide other tabs if they exist
 	end)
 	setupHover(ticketsShopButt)
 end
@@ -172,11 +165,12 @@ local ticketsInvButt = InvFrame:FindFirstChild("TicketsINV")
 if ticketsInvButt then
 	ticketsInvButt.MouseButton1Click:Connect(function()
 		InvTicketsZone.Visible = true
+		-- Hide other tabs if they exist
 	end)
 	setupHover(ticketsInvButt)
 end
 
-print("MenuController: UI initialized with Animations and DisplayOrder fix.")
+print("MenuController: UI initialized with Snappy Dopamine Animations.")
 
 return {
 	smartPopupOpen = smartPopupOpen,

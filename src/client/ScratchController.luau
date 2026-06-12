@@ -22,17 +22,28 @@ local function cleanupConnections()
 end
 
 function ScratchController.OpenScratch(ticketName: string)
-	local guiName = "Scratch" .. ticketName:sub(1,1):upper() .. ticketName:sub(2):lower() .. "GUI"
-	if ticketName:lower() == "golden" then guiName = "ScratchGOLDENGUI" end
+	-- Normalize ticket name for GUI naming
+	local firstLetter = ticketName:sub(1,1):upper()
+	local restOfName = ticketName:sub(2):lower()
+	local guiName = "Scratch" .. firstLetter .. restOfName .. "GUI"
+
+	if ticketName:lower() == "golden" then
+		guiName = "ScratchGOLDENGUI"
+	end
+
+	print("ScratchController: Attempting to open " .. guiName)
 
 	local gui = PlayerGui:FindFirstChild(guiName)
 	if not gui then
-		warn("Could not find GUI: " .. guiName)
+		warn("ScratchController: Could not find GUI: " .. guiName)
 		return
 	end
 
 	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
-	if not mainFrame then return end
+	if not mainFrame then
+		warn("ScratchController: No main frame found in " .. guiName)
+		return
+	end
 
 	-- Reset and Cleanup
 	cleanupConnections()
@@ -54,8 +65,6 @@ function ScratchController.OpenScratch(ticketName: string)
 				sc.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				sc.Text = "?"
 
-				-- Use session[i] or session[tostring(i)] depending on remote behavior
-				-- Roblox usually packs numeric keys into an array
 				if session and (session[i] ~= nil or session[tostring(i)] ~= nil) then
 					local isMatch = session[i]
 					if isMatch == nil then isMatch = session[tostring(i)] end
@@ -66,14 +75,14 @@ function ScratchController.OpenScratch(ticketName: string)
 
 				local conn = sc.MouseButton1Click:Connect(function()
 					if sc.Text == "?" then
-						-- Physical Feedback
-						local originalSize = sc.Size
-						TweenService:Create(sc, TweenInfo.new(0.05), {
-							Size = UDim2.new(originalSize.X.Scale * 0.8, 0, originalSize.Y.Scale * 0.8, 0)
+						-- Snappy Feedback
+						local originalBtnSize = sc.Size
+						TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Size = UDim2.new(originalBtnSize.X.Scale * 0.9, 0, originalBtnSize.Y.Scale * 0.9, 0)
 						}):Play()
 
 						task.delay(0.05, function()
-							TweenService:Create(sc, TweenInfo.new(0.05), {Size = originalSize}):Play()
+							TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalBtnSize}):Play()
 						end)
 
 						-- Server Request
@@ -85,10 +94,10 @@ function ScratchController.OpenScratch(ticketName: string)
 		end
 	end
 
-	-- Pop-up Animation
+	-- Snappy Pop-up Animation
 	mainFrame.Visible = true
-	mainFrame.Size = UDim2.new(0,0,0,0)
-	TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	mainFrame.Size = UDim2.new(originalSizes[mainFrame].X.Scale * 0.7, 0, originalSizes[mainFrame].Y.Scale * 0.7, 0)
+	TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[mainFrame]
 	}):Play()
 end
@@ -106,9 +115,18 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	local sc = iconBg and iconBg:FindFirstChild("SC" .. squareIndex)
 
 	if sc then
+		-- Reward feedback (dopamine!)
 		if isMatch then
 			sc.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 			sc.Text = "GREEN"
+			-- Pulse effect for matches
+			local originalBtnSize = sc.Size
+			TweenService:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = UDim2.new(originalBtnSize.X.Scale * 1.2, 0, originalBtnSize.Y.Scale * 1.2, 0)
+			}):Play()
+			task.delay(0.2, function()
+				TweenService:Create(sc, TweenInfo.new(0.1), {Size = originalBtnSize}):Play()
+			end)
 		else
 			sc.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 			sc.Text = "RED"
