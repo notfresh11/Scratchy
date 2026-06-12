@@ -8,7 +8,7 @@ print("MenuController: Initializing UI references...")
 
 local originalSizes = {}
 
--- Ensure frames are centered and prepared for pop-up
+-- Center and prepare
 local function prepareFrame(frame)
 	if not frame then return end
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -18,7 +18,7 @@ local function prepareFrame(frame)
 	end
 end
 
--- Utility for Pop-up Tweens (Dopamine-tuned)
+-- Snappy Pop-up Open
 local function smartPopupOpen(frame)
 	if not frame then return end
 	print("MenuController: Opening Frame " .. frame.Name)
@@ -28,18 +28,18 @@ local function smartPopupOpen(frame)
 	frame.Visible = true
 	frame.Size = UDim2.new(0, 0, 0, 0)
 
-	-- Snappy Pop-In
-	local tween = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Faster pop with more bounce
+	local tween = TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[frame]
 	})
 	tween:Play()
 end
 
+-- Snappy Pop-up Close
 local function smartPopupClose(frame)
 	if not frame or not frame.Visible then return end
 	print("MenuController: Closing Frame " .. frame.Name)
 
-	-- Snappy Pop-Out
 	local tween = TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Size = UDim2.new(0, 0, 0, 0)
 	})
@@ -94,7 +94,7 @@ local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("InvFrame")
 local InvTicketsZone = InvFrame:WaitForChild("Tickets")
 
--- Setup frames
+-- Prepare frames
 prepareFrame(ShopFrame)
 prepareFrame(InvFrame)
 
@@ -127,7 +127,7 @@ ShopButt.MouseButton1Click:Connect(function()
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
 	else
-		smartPopupClose(InvFrame)
+		closeAllMainMenus()
 		smartPopupOpen(ShopFrame)
 	end
 end)
@@ -137,7 +137,7 @@ InvButt.MouseButton1Click:Connect(function()
 	if InvFrame.Visible then
 		smartPopupClose(InvFrame)
 	else
-		smartPopupClose(ShopFrame)
+		closeAllMainMenus()
 		smartPopupOpen(InvFrame)
 	end
 end)
@@ -158,7 +158,7 @@ if InvClose then
 	end)
 end
 
-print("MenuController: UI initialized with Centered Pop-up Animations.")
+print("MenuController: UI initialized with Super Snappy Centered Animations.")
 
 return {
 	smartPopupOpen = smartPopupOpen,
