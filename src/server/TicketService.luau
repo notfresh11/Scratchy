@@ -7,7 +7,7 @@ local DataService
 
 local TicketService = {}
 
--- Session tracking for squares
+-- Session tracking for squares: [userId][ticketName] = { [index] = isMatch }
 local playerSessions = {}
 
 -- Setup RemoteEvents and RemoteFunctions
@@ -102,40 +102,50 @@ local function onSellTicket(player: Player, ticketName: string)
 	return {Success = true, Price = sellPrice}
 end
 
--- GET SESSION
+-- GET / START SESSION
 local function onGetSession(player: Player, ticketName: string)
 	local userId = tostring(player.UserId)
+
+	-- 1. If session exists, return it (Resume)
 	if playerSessions[userId] and playerSessions[userId][ticketName] then
+		print("TicketService: Resuming session for " .. player.Name .. " - " .. ticketName)
 		return playerSessions[userId][ticketName]
 	end
-	return nil
+
+	-- 2. No session, try to start a new one
+	local config = GameConfig.Tickets[ticketName]
+	if not config then return nil end
+
+	local inventory = player:FindFirstChild("Inventory")
+	local ticketValue = inventory and inventory:FindFirstChild(ticketName .. "Ticket")
+
+	if ticketValue and ticketValue.Value > 0 then
+		-- Consume ticket immediately
+		ticketValue.Value -= 1
+
+		if not playerSessions[userId] then playerSessions[userId] = {} end
+		playerSessions[userId][ticketName] = {}
+
+		print("TicketService: Started NEW session for " .. player.Name .. " - " .. ticketName .. " (Ticket consumed)")
+		return playerSessions[userId][ticketName]
+	else
+		warn("TicketService: " .. player.Name .. " has no tickets to start session.")
+		return nil
+	end
 end
 
 -- REVEAL SQUARE
 local function onRevealSquare(player: Player, ticketName: string, squareIndex: number)
-	print("TicketService: Request to reveal " .. ticketName .. " square " .. squareIndex .. " from " .. player.Name)
+	local userId = tostring(player.UserId)
+	local session = playerSessions[userId] and playerSessions[userId][ticketName]
+
+	if not session then
+		warn("TicketService: Reveal attempt without active session for " .. player.Name)
+		return
+	end
 
 	local config = GameConfig.Tickets[ticketName]
 	if not config then return end
-
-	local userId = tostring(player.UserId)
-	local inventory = player:FindFirstChild("Inventory")
-	local ticketValue = inventory and inventory:FindFirstChild(ticketName .. "Ticket")
-
-	-- Create session if not exists
-	if not (playerSessions[userId] and playerSessions[userId][ticketName]) then
-		if not ticketValue or ticketValue.Value <= 0 then
-			warn("TicketService: " .. player.Name .. " has no tickets to start session.")
-			return
-		end
-
-		if not playerSessions[userId] then playerSessions[userId] = {} end
-		playerSessions[userId][ticketName] = {}
-		ticketValue.Value -= 1
-		print("TicketService: Session started for " .. player.Name)
-	end
-
-	local session = playerSessions[userId][ticketName]
 
 	-- Don't allow re-revealing if already exists, but resend for sync
 	if session[tostring(squareIndex)] ~= nil or session[squareIndex] ~= nil then
@@ -147,14 +157,14 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 	-- Generate result
 	local isMatch = math.random() <= config.WinChancePerSquare
 	session[tostring(squareIndex)] = isMatch
-	print("TicketService: Generated " .. tostring(isMatch) .. " for square " .. squareIndex)
+	print("TicketService: Reveal result for " .. player.Name .. " -> " .. tostring(isMatch))
 
 	revealSquareEvent:FireClient(player, ticketName, squareIndex, isMatch)
 
 	-- Check for completion
 	local revealedCount = 0
 	local matchesCount = 0
-	for i = 1, 10 do -- Large enough to catch any index
+	for i = 1, 10 do -- Search for all possible square indices
 		local res = session[tostring(i)] or session[i]
 		if res ~= nil then
 			revealedCount += 1
@@ -164,9 +174,7 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 		end
 	end
 
-	print("TicketService: revealedCount: " .. revealedCount)
-
-	if revealedCount >= 3 then -- Support 3 or more if UI expands
+	if revealedCount >= 3 then
 		local reward = 0
 		if matchesCount == 3 then
 			reward = config.Rewards.Jackpot
@@ -179,13 +187,13 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 			local cashValue = leaderstats and leaderstats:FindFirstChild("Cash")
 			if cashValue then
 				cashValue.Value += reward
-				print("TicketService: Rewarded " .. player.Name .. " with $" .. reward)
+				print("TicketService: Reward paid to " .. player.Name .. ": $" .. reward)
 			end
 		end
 
 		-- CLEAR SESSION
 		playerSessions[userId][ticketName] = nil
-		print("TicketService: Session cleared for " .. player.Name)
+		print("TicketService: Session COMPLETED for " .. player.Name)
 	end
 end
 
