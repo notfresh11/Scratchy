@@ -5,12 +5,15 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local InvTicketsTemplates = ReplicatedStorage:WaitForChild("InvTickets")
 local InventoryFolder = Player:WaitForChild("Inventory")
+local Events = ReplicatedStorage:WaitForChild("Events")
+local SellTicketEvent = Events:WaitForChild("SellTicketEvent")
 
 local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("InvFrame")
 local TicketsZone = InvFrame:WaitForChild("Tickets")
 
 local ScratchController = require(script.Parent.ScratchController)
+local MenuController = require(script.Parent.MenuController)
 
 local TicketMapping = {
 	["SimpleTicket"] = "SimpleTTemplate",
@@ -19,6 +22,7 @@ local TicketMapping = {
 }
 
 local function updateInventory()
+	print("InventoryController: Updating visual inventory...")
 	-- Clear current visual tickets
 	for _, child in ipairs(TicketsZone:GetChildren()) do
 		if child:IsA("Frame") or child:IsA("ImageLabel") or child:IsA("ImageButton") then
@@ -34,7 +38,8 @@ local function updateInventory()
 
 			if template then
 				local clone = template:Clone()
-				local displayName = ticketVal.Name:gsub("Ticket", ""):upper()
+				local ticketType = ticketVal.Name:gsub("Ticket", "")
+				local displayName = ticketType:upper()
 				clone.Name = ticketVal.Name
 
 				local nameLabel = clone:FindFirstChild("Name")
@@ -47,10 +52,29 @@ local function updateInventory()
 				-- Connect Scratch Button
 				local scratchButt = clone:FindFirstChild("ScratchButt")
 				if scratchButt then
+					MenuController.setupHover(scratchButt)
 					scratchButt.MouseButton1Click:Connect(function()
-						ScratchController.OpenScratch(ticketVal.Name:gsub("Ticket", ""))
+						print("InventoryController: Scratching " .. ticketType)
+						ScratchController.OpenScratch(ticketType)
 					end)
 				end
+
+				-- Connect Sell Button
+				local sellButt = clone:FindFirstChild("SellButt")
+				if sellButt then
+					MenuController.setupHover(sellButt)
+					sellButt.MouseButton1Click:Connect(function()
+						print("InventoryController: Selling " .. ticketType)
+						local result = SellTicketEvent:InvokeServer(ticketType)
+						if result and result.Success then
+							print("Sold " .. ticketType .. " for $" .. result.Price)
+						else
+							warn("Sell failed: " .. (result and result.Error or "Unknown"))
+						end
+					end)
+				end
+			else
+				warn("InventoryController: Template not found: " .. tostring(templateName))
 			end
 		end
 	end
