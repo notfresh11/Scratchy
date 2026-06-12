@@ -8,6 +8,8 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 local RevealSquareEvent = Events:WaitForChild("RevealSquareEvent")
 local GetScratchSession = Events:WaitForChild("GetScratchSession")
 
+local MenuController = require(script.Parent.MenuController)
+
 local ScratchController = {}
 
 local currentOpenTicket = nil
@@ -21,8 +23,20 @@ local function cleanupConnections()
 	activeConnections = {}
 end
 
+-- Ensure centered pop-up
+local function prepareFrame(frame)
+	if not frame then return end
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	if not originalSizes[frame] then
+		originalSizes[frame] = frame.Size
+	end
+end
+
 function ScratchController.OpenScratch(ticketName: string)
-	-- Normalize ticket name for GUI naming
+	-- CLOSE MAIN MENUS
+	MenuController.closeAllMainMenus()
+
 	local firstLetter = ticketName:sub(1,1):upper()
 	local restOfName = ticketName:sub(2):lower()
 	local guiName = "Scratch" .. firstLetter .. restOfName .. "GUI"
@@ -40,18 +54,13 @@ function ScratchController.OpenScratch(ticketName: string)
 	end
 
 	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
-	if not mainFrame then
-		warn("ScratchController: No main frame found in " .. guiName)
-		return
-	end
+	if not mainFrame then return end
+
+	prepareFrame(mainFrame)
 
 	-- Reset and Cleanup
 	cleanupConnections()
 	currentOpenTicket = ticketName
-
-	if not originalSizes[mainFrame] then
-		originalSizes[mainFrame] = mainFrame.Size
-	end
 
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
 
@@ -75,7 +84,6 @@ function ScratchController.OpenScratch(ticketName: string)
 
 				local conn = sc.MouseButton1Click:Connect(function()
 					if sc.Text == "?" then
-						-- Snappy Feedback
 						local originalBtnSize = sc.Size
 						TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 							Size = UDim2.new(originalBtnSize.X.Scale * 0.9, 0, originalBtnSize.Y.Scale * 0.9, 0)
@@ -85,7 +93,6 @@ function ScratchController.OpenScratch(ticketName: string)
 							TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalBtnSize}):Play()
 						end)
 
-						-- Server Request
 						RevealSquareEvent:FireServer(ticketName, i)
 					end
 				end)
@@ -94,10 +101,10 @@ function ScratchController.OpenScratch(ticketName: string)
 		end
 	end
 
-	-- Snappy Pop-up Animation
+	-- Snappy Pop-In Animation (Centered)
 	mainFrame.Visible = true
-	mainFrame.Size = UDim2.new(originalSizes[mainFrame].X.Scale * 0.7, 0, originalSizes[mainFrame].Y.Scale * 0.7, 0)
-	TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	mainFrame.Size = UDim2.new(0, 0, 0, 0)
+	TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[mainFrame]
 	}):Play()
 end
@@ -115,11 +122,9 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	local sc = iconBg and iconBg:FindFirstChild("SC" .. squareIndex)
 
 	if sc then
-		-- Reward feedback (dopamine!)
 		if isMatch then
 			sc.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 			sc.Text = "GREEN"
-			-- Pulse effect for matches
 			local originalBtnSize = sc.Size
 			TweenService:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 				Size = UDim2.new(originalBtnSize.X.Scale * 1.2, 0, originalBtnSize.Y.Scale * 1.2, 0)
@@ -147,7 +152,7 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	if revealedCount == 3 then
 		task.delay(1.5, function()
 			if mainFrame and mainFrame.Visible then
-				local tween = TweenService:Create(mainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				local tween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 					Size = UDim2.new(0,0,0,0)
 				})
 				tween.Completed:Connect(function()

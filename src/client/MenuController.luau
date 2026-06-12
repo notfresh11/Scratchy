@@ -8,30 +8,39 @@ print("MenuController: Initializing UI references...")
 
 local originalSizes = {}
 
+-- Ensure frames are centered and prepared for pop-up
+local function prepareFrame(frame)
+	if not frame then return end
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	if not originalSizes[frame] then
+		originalSizes[frame] = frame.Size
+	end
+end
+
 -- Utility for Pop-up Tweens (Dopamine-tuned)
 local function smartPopupOpen(frame)
 	if not frame then return end
 	print("MenuController: Opening Frame " .. frame.Name)
 
-	if not originalSizes[frame] then
-		originalSizes[frame] = frame.Size
-	end
+	prepareFrame(frame)
 
 	frame.Visible = true
-	frame.Size = UDim2.new(originalSizes[frame].X.Scale * 0.7, 0, originalSizes[frame].Y.Scale * 0.7, 0)
+	frame.Size = UDim2.new(0, 0, 0, 0)
 
-	-- Faster, snappier bounce
-	local tween = TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Snappy Pop-In
+	local tween = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[frame]
 	})
 	tween:Play()
 end
 
 local function smartPopupClose(frame)
-	if not frame then return end
+	if not frame or not frame.Visible then return end
 	print("MenuController: Closing Frame " .. frame.Name)
 
-	local tween = TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+	-- Snappy Pop-Out
+	local tween = TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Size = UDim2.new(0, 0, 0, 0)
 	})
 
@@ -85,19 +94,17 @@ local InvGui = PlayerGui:WaitForChild("InvGUI")
 local InvFrame = InvGui:WaitForChild("InvFrame")
 local InvTicketsZone = InvFrame:WaitForChild("Tickets")
 
--- Ensure GUIs are Enabled and have correct DisplayOrder
+-- Setup frames
+prepareFrame(ShopFrame)
+prepareFrame(InvFrame)
+
+-- GUIs Setup
 MainGui.Enabled = true
 MainGui.DisplayOrder = 5
-
 ShopGui.Enabled = true
 ShopGui.DisplayOrder = 10
-
 InvGui.Enabled = true
 InvGui.DisplayOrder = 10
-
--- Capture original sizes
-originalSizes[ShopFrame] = ShopFrame.Size
-originalSizes[InvFrame] = InvFrame.Size
 
 -- Interactions
 MainFrame.Active = false
@@ -107,18 +114,20 @@ InvFrame.Active = true
 -- 3. HIDE EVERYTHING AT START
 ShopFrame.Visible = false
 InvFrame.Visible = false
--- Containers should stay visible internally so they scale WITH the parent frame
 InvTicketsZone.Visible = true
 ShopTicketsFolder.Visible = true
+
+local function closeAllMainMenus()
+	smartPopupClose(ShopFrame)
+	smartPopupClose(InvFrame)
+end
 
 -- 4. CONNECT MAIN BUTTONS
 ShopButt.MouseButton1Click:Connect(function()
 	if ShopFrame.Visible then
 		smartPopupClose(ShopFrame)
 	else
-		if InvFrame.Visible then
-			smartPopupClose(InvFrame)
-		end
+		smartPopupClose(InvFrame)
 		smartPopupOpen(ShopFrame)
 	end
 end)
@@ -128,9 +137,7 @@ InvButt.MouseButton1Click:Connect(function()
 	if InvFrame.Visible then
 		smartPopupClose(InvFrame)
 	else
-		if ShopFrame.Visible then
-			smartPopupClose(ShopFrame)
-		end
+		smartPopupClose(ShopFrame)
 		smartPopupOpen(InvFrame)
 	end
 end)
@@ -151,29 +158,11 @@ if InvClose then
 	end)
 end
 
--- 6. TICKET TABS (Logic for switching tabs if you add more later)
-local ticketsShopButt = ShopFrame:FindFirstChild("TicketsSHOP")
-if ticketsShopButt then
-	ticketsShopButt.MouseButton1Click:Connect(function()
-		ShopTicketsFolder.Visible = true
-		-- Hide other tabs if they exist
-	end)
-	setupHover(ticketsShopButt)
-end
-
-local ticketsInvButt = InvFrame:FindFirstChild("TicketsINV")
-if ticketsInvButt then
-	ticketsInvButt.MouseButton1Click:Connect(function()
-		InvTicketsZone.Visible = true
-		-- Hide other tabs if they exist
-	end)
-	setupHover(ticketsInvButt)
-end
-
-print("MenuController: UI initialized with Snappy Dopamine Animations.")
+print("MenuController: UI initialized with Centered Pop-up Animations.")
 
 return {
 	smartPopupOpen = smartPopupOpen,
 	smartPopupClose = smartPopupClose,
+	closeAllMainMenus = closeAllMainMenus,
 	setupHover = setupHover
 }
