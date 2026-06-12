@@ -8,5 +8,9 @@ local DataService = require(Server.DataService)
 local TicketService = require(Server.TicketService)
 local PrestigeService = require(Server.PrestigeService)
 local LeaderboardService = require(Server.LeaderboardService)
+local AdminService = require(Server.AdminService)
+
+-- Explicitly call Init where necessary
+AdminService.Init()
 
 print("Server init - Services Loaded Successfully")
