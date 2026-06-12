@@ -17,8 +17,8 @@ Zone.Touched:Connect(function(hit)
 			MenuController.smartPopupOpen(ShopFrame)
 
 			local InvGui = PlayerGui:WaitForChild("InvGUI")
-			local InvFrame = InvGui:FindFirstChild("ShopFrame")
-			local InvTicketsZone = InvGui:FindFirstChild("Tickets")
+			local InvFrame = InvGui:FindFirstChild("InvFrame")
+			local InvTicketsZone = InvFrame and InvFrame:FindFirstChild("Tickets")
 			if InvFrame and InvFrame.Visible then
 				MenuController.smartPopupClose(InvFrame)
 				if InvTicketsZone then InvTicketsZone.Visible = false end
