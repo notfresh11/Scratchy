@@ -23,13 +23,14 @@ local function cleanupConnections()
 	activeConnections = {}
 end
 
--- Force centering and prepare for animation
+-- Snappy Centering
 local function prepareFrame(frame)
 	if not frame then return end
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	if not originalSizes[frame] then
 		originalSizes[frame] = frame.Size
+		print("ScratchController: Prepared size for " .. frame.Name .. " -> " .. tostring(frame.Size))
 	end
 end
 
@@ -53,7 +54,6 @@ function ScratchController.OpenScratch(ticketName: string)
 		return
 	end
 
-	-- Ensure GUI is visible and on top
 	gui.Enabled = true
 	gui.DisplayOrder = 20
 
@@ -62,74 +62,81 @@ function ScratchController.OpenScratch(ticketName: string)
 
 	prepareFrame(mainFrame)
 
-	-- 2. START OPENING ANIMATION IMMEDIATELY (Dopamine!)
+	-- 2. START OPENING ANIMATION IMMEDIATELY (Centered Pop-In)
 	mainFrame.Visible = true
-	mainFrame.Size = UDim2.new(0, 0, 0, 0)
+	mainFrame.Size = UDim2.new(0.1, 0, 0.1, 0)
 
 	local openTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[mainFrame]
 	})
 	openTween:Play()
 
-	-- 3. SYNC DATA FROM SERVER (IN BACKGROUND)
+	-- 3. SYNC DATA AND CONNECT CLICKS
 	cleanupConnections()
 	currentOpenTicket = ticketName
 
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
 
-	-- Reset squares first
 	if iconBg then
-		for i = 1, 3 do
-			local sc = iconBg:FindFirstChild("SC" .. i)
-			if sc then
-				sc.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				sc.Text = "?"
-			end
-		end
-	end
+		print("ScratchController: Connecting squares...")
+		for _, child in ipairs(iconBg:GetChildren()) do
+			local indexStr = child.Name:match("%d+")
+			if indexStr then
+				local i = tonumber(indexStr)
+				print("ScratchController: Found square: " .. child.Name .. " as Index: " .. i)
 
-	-- Invoke server
-	task.spawn(function()
-		local session = GetScratchSession:InvokeServer(ticketName)
-		if iconBg and session then
-			for i = 1, 3 do
-				local sc = iconBg:FindFirstChild("SC" .. i)
-				local result = session[i] or session[tostring(i)]
-				if sc and result ~= nil then
-					sc.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-					sc.Text = result and "GREEN" or "RED"
-				end
-			end
-		end
-	end)
+				child.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				child.Text = "?"
+				child.Active = true
+				child.ZIndex = 30 -- Ensure it's on top of background
 
-	-- 4. CONNECT CLICK EVENTS
-	if iconBg then
-		for i = 1, 3 do
-			local sc = iconBg:FindFirstChild("SC" .. i)
-			if sc then
-				local conn = sc.MouseButton1Click:Connect(function()
-					if sc.Text == "?" then
+				local conn = child.MouseButton1Click:Connect(function()
+					print("ScratchController: Clicked SC" .. i)
+					if child.Text == "?" then
 						-- Snappy click feedback
-						local btnSize = sc.Size
-						TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						local btnSize = child.Size
+						TweenService:Create(child, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 							Size = UDim2.new(btnSize.X.Scale * 0.9, 0, btnSize.Y.Scale * 0.9, 0)
 						}):Play()
 						task.delay(0.05, function()
-							TweenService:Create(sc, TweenInfo.new(0.05, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = btnSize}):Play()
+							TweenService:Create(child, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = btnSize}):Play()
 						end)
 
+						print("ScratchController: Firing RevealSquareEvent for " .. i)
 						RevealSquareEvent:FireServer(ticketName, i)
 					end
 				end)
 				table.insert(activeConnections, conn)
 			end
 		end
+	else
+		warn("ScratchController: ICONBG NOT FOUND!")
 	end
+
+	-- Invoke server to catch up
+	task.spawn(function()
+		local session = GetScratchSession:InvokeServer(ticketName)
+		if iconBg and session then
+			print("ScratchController: Restoring session state...")
+			for _, child in ipairs(iconBg:GetChildren()) do
+				local indexStr = child.Name:match("%d+")
+				if indexStr then
+					local i = tonumber(indexStr)
+					local result = session[i] or session[tostring(i)]
+					if result ~= nil then
+						child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+						child.Text = result and "GREEN" or "RED"
+					end
+				end
+			end
+		end
+	end)
 end
 
 -- Listen for server results
 RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatch)
+	print("ScratchController: Revealed result for square " .. squareIndex .. ": " .. tostring(isMatch))
+
 	local firstLetter = ticketName:sub(1,1):upper()
 	local restOfName = ticketName:sub(2):lower()
 	local guiName = "Scratch" .. firstLetter .. restOfName .. "GUI"
@@ -140,13 +147,22 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 
 	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
 	local iconBg = mainFrame and mainFrame:FindFirstChild("ICONBG")
-	local sc = iconBg and iconBg:FindFirstChild("SC" .. squareIndex)
+
+	local sc = nil
+	if iconBg then
+		for _, child in ipairs(iconBg:GetChildren()) do
+			local indexStr = child.Name:match(tostring(squareIndex))
+			if indexStr then
+				sc = child
+				break
+			end
+		end
+	end
 
 	if sc then
 		if isMatch then
 			sc.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 			sc.Text = "GREEN"
-			-- Dopamine pulse
 			local btnSize = sc.Size
 			TweenService:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 				Size = UDim2.new(btnSize.X.Scale * 1.2, 0, btnSize.Y.Scale * 1.2, 0)
@@ -163,19 +179,19 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	-- Auto-close
 	local revealedCount = 0
 	if iconBg then
-		for i = 1, 3 do
-			local sq = iconBg:FindFirstChild("SC" .. i)
-			if sq and sq.Text ~= "?" then
+		for _, child in ipairs(iconBg:GetChildren()) do
+			if child.Name:match("%d+") and child.Text ~= "?" then
 				revealedCount += 1
 			end
 		end
 	end
 
-	if revealedCount == 3 then
-		task.delay(0.8, function() -- Reduced delay for snappiness
+	if revealedCount >= 3 then
+		task.delay(0.6, function()
 			if mainFrame and mainFrame.Visible then
-				local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-					Size = UDim2.new(0,0,0,0)
+				print("ScratchController: Auto-closing " .. mainFrame.Name)
+				local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+					Size = UDim2.new(0.1,0,0.1,0)
 				})
 				closeTween.Completed:Connect(function()
 					mainFrame.Visible = false

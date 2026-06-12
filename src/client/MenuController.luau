@@ -8,13 +8,14 @@ print("MenuController: Initializing UI references...")
 
 local originalSizes = {}
 
--- Center and prepare
+-- Snappy Centering
 local function prepareFrame(frame)
 	if not frame then return end
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	if not originalSizes[frame] then
 		originalSizes[frame] = frame.Size
+		print("MenuController: Captured size for " .. frame.Name .. ": " .. tostring(frame.Size))
 	end
 end
 
@@ -26,10 +27,10 @@ local function smartPopupOpen(frame)
 	prepareFrame(frame)
 
 	frame.Visible = true
-	frame.Size = UDim2.new(0, 0, 0, 0)
+	frame.Size = UDim2.new(0.1, 0, 0.1, 0)
 
-	-- Faster pop with more bounce
-	local tween = TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Faster pop-in
+	local tween = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Size = originalSizes[frame]
 	})
 	tween:Play()
@@ -41,7 +42,7 @@ local function smartPopupClose(frame)
 	print("MenuController: Closing Frame " .. frame.Name)
 
 	local tween = TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-		Size = UDim2.new(0, 0, 0, 0)
+		Size = UDim2.new(0.1, 0, 0.1, 0)
 	})
 
 	tween.Completed:Connect(function()
@@ -118,6 +119,7 @@ InvTicketsZone.Visible = true
 ShopTicketsFolder.Visible = true
 
 local function closeAllMainMenus()
+	print("MenuController: closeAllMainMenus called")
 	smartPopupClose(ShopFrame)
 	smartPopupClose(InvFrame)
 end
@@ -158,7 +160,7 @@ if InvClose then
 	end)
 end
 
-print("MenuController: UI initialized with Super Snappy Centered Animations.")
+print("MenuController: UI initialized with Snappy Centered Animations.")
 
 return {
 	smartPopupOpen = smartPopupOpen,
