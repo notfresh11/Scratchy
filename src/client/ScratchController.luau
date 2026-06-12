@@ -23,35 +23,48 @@ local function cleanupConnections()
 	activeConnections = {}
 end
 
-local function closeAndDestroy()
-	if not currentGui then return end
+local function closeAndDestroy(specificGui)
+	local gui = specificGui or currentGui
+	if not gui or not gui.Parent then return end
 
-	local gui = currentGui
-	currentGui = nil -- Prevent double calls
+	local isCurrent = (gui == currentGui)
+	if isCurrent then
+		currentGui = nil
+	end
 
-	print("ScratchController: Closing and destroying GUI.")
+	print("ScratchController: Closing and destroying GUI: " .. gui.Name)
 
 	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
-	if mainFrame then
+	if mainFrame and mainFrame.Visible then
 		local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 			Size = UDim2.new(0.1, 0, 0.1, 0)
 		})
 		closeTween.Completed:Connect(function()
-			cleanupConnections()
-			gui:Destroy()
+			if isCurrent then
+				cleanupConnections()
+			end
+			if gui.Parent then
+				gui:Destroy()
+			end
 		end)
 		closeTween:Play()
 	else
-		cleanupConnections()
-		gui:Destroy()
+		if isCurrent then
+			cleanupConnections()
+		end
+		if gui.Parent then
+			gui:Destroy()
+		end
 	end
 end
 
 function ScratchController.OpenScratch(ticketName: string)
 	-- 1. PREVENT DOUBLE OPEN
 	if currentGui then
-		currentGui:Destroy()
+		local oldGui = currentGui
+		currentGui = nil
 		cleanupConnections()
+		oldGui:Destroy()
 	end
 
 	-- 2. CLOSE OTHER MAIN MENUS
@@ -104,6 +117,7 @@ function ScratchController.OpenScratch(ticketName: string)
 	}):Play()
 
 	-- 5. POPULATE AND CONNECT
+	local revealedAtStart = 0
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
 	if iconBg then
 		for _, child in ipairs(iconBg:GetChildren()) do
@@ -119,6 +133,7 @@ function ScratchController.OpenScratch(ticketName: string)
 				-- Restore from session
 				local result = session[i] or session[tostring(i)]
 				if result ~= nil then
+					revealedAtStart += 1
 					child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 					child.Text = result and "GREEN" or "RED"
 				end
@@ -143,6 +158,12 @@ function ScratchController.OpenScratch(ticketName: string)
 				table.insert(activeConnections, conn)
 			end
 		end
+	end
+
+	if revealedAtStart >= 3 then
+		task.delay(3, function()
+			closeAndDestroy(gui)
+		end)
 	end
 
 	-- Safety manual close
@@ -203,8 +224,9 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 	end
 
 	if revealedCount >= 3 then
+		local guiToClose = currentGui
 		task.delay(3, function()
-			closeAndDestroy()
+			closeAndDestroy(guiToClose)
 		end)
 	end
 end)

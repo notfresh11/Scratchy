@@ -102,14 +102,33 @@ local function onSellTicket(player: Player, ticketName: string)
 	return {Success = true, Price = sellPrice}
 end
 
+-- Internal helper to check session completion
+local function isSessionComplete(session)
+	local revealedCount = 0
+	for i = 1, 10 do
+		if session[tostring(i)] ~= nil or session[i] ~= nil then
+			revealedCount += 1
+		end
+	end
+	return revealedCount >= 3
+end
+
 -- GET / START SESSION
 local function onGetSession(player: Player, ticketName: string)
 	local userId = tostring(player.UserId)
 
 	-- 1. If session exists, return it (Resume)
 	if playerSessions[userId] and playerSessions[userId][ticketName] then
-		print("TicketService: Resuming session for " .. player.Name .. " - " .. ticketName)
-		return playerSessions[userId][ticketName]
+		local session = playerSessions[userId][ticketName]
+
+		-- Defensive check: if it was already finished, clear it and force a new one
+		if isSessionComplete(session) then
+			print("TicketService: Found completed session for " .. player.Name .. " - " .. ticketName .. ". Clearing.")
+			playerSessions[userId][ticketName] = nil
+		else
+			print("TicketService: Resuming session for " .. player.Name .. " - " .. ticketName)
+			return session
+		end
 	end
 
 	-- 2. No session, try to start a new one
@@ -148,18 +167,15 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 	if not config then return end
 
 	-- Don't allow re-revealing if already exists, but resend for sync
-	if session[tostring(squareIndex)] ~= nil or session[squareIndex] ~= nil then
-		local result = session[tostring(squareIndex)] or session[squareIndex]
-		revealSquareEvent:FireClient(player, ticketName, squareIndex, result)
-		return
+	if session[tostring(squareIndex)] == nil and session[squareIndex] == nil then
+		-- Generate result
+		local isMatch = math.random() <= config.WinChancePerSquare
+		session[tostring(squareIndex)] = isMatch
+		print("TicketService: Reveal result for " .. player.Name .. " -> " .. tostring(isMatch))
 	end
 
-	-- Generate result
-	local isMatch = math.random() <= config.WinChancePerSquare
-	session[tostring(squareIndex)] = isMatch
-	print("TicketService: Reveal result for " .. player.Name .. " -> " .. tostring(isMatch))
-
-	revealSquareEvent:FireClient(player, ticketName, squareIndex, isMatch)
+	local finalResult = session[tostring(squareIndex)] or session[squareIndex]
+	revealSquareEvent:FireClient(player, ticketName, squareIndex, finalResult)
 
 	-- Check for completion
 	local revealedCount = 0
