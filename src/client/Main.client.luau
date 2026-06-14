@@ -22,5 +22,6 @@ safeRequire(Client:WaitForChild("ShopController"))
 safeRequire(Client:WaitForChild("ScratchController"))
 safeRequire(Client:WaitForChild("ZoneController"))
 safeRequire(Client:WaitForChild("AutoScratchController"))
+safeRequire(Client:WaitForChild("HUDController"))
 
 print("Client init - All Controllers Initialization Attempted")
