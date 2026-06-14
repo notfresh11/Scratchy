@@ -83,8 +83,9 @@ end
 -- 1. WAIT FOR HUD (MAIN)
 local MainGui = PlayerGui:WaitForChild("Main")
 local MainFrame = MainGui:WaitForChild("MainFrame")
-local InvButt = MainFrame:WaitForChild("InvButt")
-local ShopButt = MainFrame:WaitForChild("ShopButt")
+local TaskBar = MainFrame:WaitForChild("TaskBar")
+local InvButt = TaskBar:WaitForChild("InvButt")
+local ShopButt = TaskBar:WaitForChild("ShopButt")
 
 -- 2. WAIT FOR SHOP & INV GUI
 local ShopGui = PlayerGui:WaitForChild("ShopGUI")
