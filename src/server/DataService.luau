@@ -15,6 +15,7 @@ DataService.SessionData = {}
 local DEFAULT_DATA = {
 	Cash = GameConfig.StartingCash,
 	Shards = 0,
+	Luck = 0,
 	Inventory = {
 		SimpleTicket = 0,
 		RareTicket = 0,
@@ -34,6 +35,7 @@ local function loadData(player: Player)
 
 		local session = DataService.SessionData[userId]
 		if session.Shards == nil then session.Shards = 0 end
+		if session.Luck == nil then session.Luck = 0 end
 		if not session.Inventory then session.Inventory = table.clone(DEFAULT_DATA.Inventory) end
 		for k, v in pairs(DEFAULT_DATA.Inventory) do
 			if session.Inventory[k] == nil then
@@ -86,6 +88,11 @@ local function setupPlayerObjects(player: Player)
 	shards.Value = data.Shards
 	shards.Parent = leaderstats
 
+	local luck = Instance.new("NumberValue")
+	luck.Name = "Luck"
+	luck.Value = data.Luck
+	luck.Parent = leaderstats
+
 	-- Inventory Folder
 	local inventory = Instance.new("Folder")
 	inventory.Name = "Inventory"
@@ -113,6 +120,12 @@ local function setupPlayerObjects(player: Player)
 	shards.Changed:Connect(function(newValue)
 		if DataService.SessionData[userId] then
 			DataService.SessionData[userId].Shards = newValue
+		end
+	end)
+
+	luck.Changed:Connect(function(newValue)
+		if DataService.SessionData[userId] then
+			DataService.SessionData[userId].Luck = newValue
 		end
 	end)
 end

@@ -134,19 +134,20 @@ local function animateInfoText(gui)
 	local infoText = mainFrame and mainFrame:FindFirstChild("INFO")
 	if not infoText then return end
 
-	local originalSize = infoText.Size
-	local originalPos = infoText.Position
+	local uiScale = infoText:FindFirstChildOfClass("UIScale")
+	if not uiScale then
+		uiScale = Instance.new("UIScale")
+		uiScale.Parent = infoText
+	end
+
 	infoText.AnchorPoint = Vector2.new(0.5, 0.5)
-	infoText.Position = UDim2.new(
-		originalPos.X.Scale + (originalSize.X.Scale * 0.5),
-		originalPos.X.Offset + (originalSize.X.Offset * 0.5),
-		originalPos.Y.Scale + (originalSize.Y.Scale * 0.5),
-		originalPos.Y.Offset + (originalSize.Y.Offset * 0.5)
-	)
+	-- No need to change position if we use UIScale and it's already visually where it should be,
+	-- but let's ensure it's centered relative to its original bounding box if needed.
+	-- Actually, setting AnchorPoint to 0.5, 0.5 will shift it if it was 0,0.
 
 	local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-	local tween = TweenService:Create(infoText, tweenInfo, {
-		Size = UDim2.new(originalSize.X.Scale * 1.15, originalSize.X.Offset * 1.15, originalSize.Y.Scale * 1.15, originalSize.Y.Offset * 1.15)
+	local tween = TweenService:Create(uiScale, tweenInfo, {
+		Scale = 1.2
 	})
 	tween:Play()
 

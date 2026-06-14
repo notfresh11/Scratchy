@@ -171,10 +171,17 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 
 	-- Don't allow re-revealing if already exists, but resend for sync
 	if session[tostring(squareIndex)] == nil and session[squareIndex] == nil then
-		-- Generate result
-		local isMatch = math.random() <= config.WinChancePerSquare
+		-- Generate result with Luck
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local luckVal = leaderstats and leaderstats:FindFirstChild("Luck")
+		local luck = luckVal and luckVal.Value or 0
+
+		local finalChance = config.WinChancePerSquare + (luck * GameConfig.LuckMultiplier)
+		finalChance = math.min(finalChance, GameConfig.MaxWinChance)
+
+		local isMatch = math.random() <= finalChance
 		session[tostring(squareIndex)] = isMatch
-		print("TicketService: Reveal result for " .. player.Name .. " -> " .. tostring(isMatch))
+		print("TicketService: Reveal result for " .. player.Name .. " (Chance: " .. finalChance .. ") -> " .. tostring(isMatch))
 	end
 
 	local finalResult = session[tostring(squareIndex)]
