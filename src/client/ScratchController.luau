@@ -29,6 +29,14 @@ local function cleanupConnections(gui)
 	end
 end
 
+local function getMainFrame(gui)
+	if not gui then return nil end
+	return gui:FindFirstChild("SimpleTicket")
+		or gui:FindFirstChild("RareTicket")
+		or gui:FindFirstChild("GoldenTicket")
+		or gui:FindFirstChildOfClass("Frame")
+end
+
 local function closeAndDestroy(specificGui)
 	local gui = specificGui or currentGui
 	if not gui or not gui.Parent then return end
@@ -39,7 +47,7 @@ local function closeAndDestroy(specificGui)
 
 	print("ScratchController: Closing and destroying GUI: " .. gui.Name)
 
-	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
+	local mainFrame = getMainFrame(gui)
 	if mainFrame and mainFrame.Visible then
 		local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 			Size = UDim2.new(0.1, 0, 0.1, 0)
@@ -61,7 +69,7 @@ end
 
 local function checkCompletion(gui, ticketName)
 	if not gui then return end
-	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
+	local mainFrame = getMainFrame(gui)
 	if not mainFrame then return end
 
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
@@ -130,29 +138,30 @@ local function checkCompletion(gui, ticketName)
 end
 
 local function animateInfoText(gui)
-	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
-	local infoText = mainFrame and mainFrame:FindFirstChild("INFO")
-	if not infoText then return end
+	local mainFrame = getMainFrame(gui)
+	local infoText = mainFrame and mainFrame:FindFirstChild("INFO", true)
+	if not infoText then
+		print("ScratchController: INFO text not found in " .. (gui and gui.Name or "nil"))
+		return
+	end
 
 	local uiScale = infoText:FindFirstChildOfClass("UIScale")
 	if not uiScale then
 		uiScale = Instance.new("UIScale")
+		uiScale.Scale = 1
 		uiScale.Parent = infoText
 	end
 
-	infoText.AnchorPoint = Vector2.new(0.5, 0.5)
-	-- No need to change position if we use UIScale and it's already visually where it should be,
-	-- but let's ensure it's centered relative to its original bounding box if needed.
-	-- Actually, setting AnchorPoint to 0.5, 0.5 will shift it if it was 0,0.
-
 	local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 	local tween = TweenService:Create(uiScale, tweenInfo, {
-		Scale = 1.2
+		Scale = 1.25
 	})
 	tween:Play()
 
 	if not activeConnections[gui] then activeConnections[gui] = {} end
-	table.insert(activeConnections[gui], {Disconnect = function() tween:Cancel() end})
+	table.insert(activeConnections[gui], {Disconnect = function()
+		if tween then tween:Cancel() end
+	end})
 end
 
 function ScratchController.OpenScratch(ticketName: string)
@@ -198,8 +207,11 @@ function ScratchController.OpenScratch(ticketName: string)
 	gui.Parent = PlayerGui
 	currentGui = gui
 
-	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
-	if not mainFrame then return end
+	local mainFrame = getMainFrame(gui)
+	if not mainFrame then
+		warn("ScratchController: MainFrame not found in " .. templateName)
+		return
+	end
 
 	-- Snappy Centering
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -284,7 +296,7 @@ end
 RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatch)
 	if not currentGui then return end
 
-	local mainFrame = currentGui:FindFirstChild("SimpleTicket") or currentGui:FindFirstChildOfClass("Frame")
+	local mainFrame = getMainFrame(currentGui)
 	local iconBg = mainFrame and mainFrame:FindFirstChild("ICONBG")
 
 	local sc = nil
