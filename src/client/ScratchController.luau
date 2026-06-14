@@ -7,8 +7,10 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local Events = ReplicatedStorage:WaitForChild("Events")
 local RevealSquareEvent = Events:WaitForChild("RevealSquareEvent")
 local GetScratchSession = Events:WaitForChild("GetScratchSession")
+local FinishScratchSession = Events:WaitForChild("FinishScratchSession")
 local ScratchMenusTemplates = ReplicatedStorage:WaitForChild("ScratchMenu")
 
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local MenuController = require(script.Parent.MenuController)
 
 local ScratchController = {}
@@ -55,6 +57,101 @@ local function closeAndDestroy(specificGui)
 			gui:Destroy()
 		end
 	end
+end
+
+local function checkCompletion(gui, ticketName)
+	if not gui then return end
+	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
+	if not mainFrame then return end
+
+	local iconBg = mainFrame:FindFirstChild("ICONBG")
+	local collectButt = mainFrame:FindFirstChild("COLLECTBUTT")
+	local trowButt = mainFrame:FindFirstChild("TROWBUTT")
+
+	if not iconBg then return end
+
+	local revealedCount = 0
+	local matchesCount = 0
+	for _, child in ipairs(iconBg:GetChildren()) do
+		if child.Name:match("%d+") and child.Text ~= "?" then
+			revealedCount += 1
+			if child.Text == "GREEN" then
+				matchesCount += 1
+			end
+		end
+	end
+
+	if revealedCount >= 3 then
+		-- If buttons are already visible, we already connected and setup
+		if (collectButt and collectButt.Visible) or (trowButt and trowButt.Visible) then return end
+
+		local config = GameConfig.Tickets[ticketName]
+		local reward = 0
+		if matchesCount == 3 then
+			reward = config.Rewards.Jackpot
+		elseif matchesCount == 2 then
+			reward = config.Rewards.Medium
+		end
+
+		if reward > 0 then
+			if collectButt then
+				collectButt.Visible = true
+				collectButt.Text = reward .. "$"
+				local conn = collectButt.MouseButton1Click:Connect(function()
+					print("ScratchController: Collecting reward: " .. reward)
+					local res = FinishScratchSession:InvokeServer(ticketName, "Collect")
+					if res and res.Success then
+						closeAndDestroy(gui)
+					end
+				end)
+				if not activeConnections[gui] then activeConnections[gui] = {} end
+				table.insert(activeConnections[gui], conn)
+			end
+			if trowButt then trowButt.Visible = false end
+		else
+			if trowButt then
+				trowButt.Visible = true
+				local conn = trowButt.MouseButton1Click:Connect(function()
+					print("ScratchController: Throwing away ticket")
+					local res = FinishScratchSession:InvokeServer(ticketName, "ThrowAway")
+					if res and res.Success then
+						closeAndDestroy(gui)
+					end
+				end)
+				if not activeConnections[gui] then activeConnections[gui] = {} end
+				table.insert(activeConnections[gui], conn)
+			end
+			if collectButt then collectButt.Visible = false end
+		end
+	else
+		if collectButt then collectButt.Visible = false end
+		if trowButt then trowButt.Visible = false end
+	end
+end
+
+local function animateInfoText(gui)
+	local mainFrame = gui:FindFirstChild("SimpleTicket") or gui:FindFirstChildOfClass("Frame")
+	local infoText = mainFrame and mainFrame:FindFirstChild("INFO")
+	if not infoText then return end
+
+	local originalSize = infoText.Size
+	local originalPos = infoText.Position
+	infoText.AnchorPoint = Vector2.new(0.5, 0.5)
+	infoText.Position = UDim2.new(
+		originalPos.X.Scale + (originalSize.X.Scale * 0.5),
+		originalPos.X.Offset + (originalSize.X.Offset * 0.5),
+		originalPos.Y.Scale + (originalSize.Y.Scale * 0.5),
+		originalPos.Y.Offset + (originalSize.Y.Offset * 0.5)
+	)
+
+	local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	local tween = TweenService:Create(infoText, tweenInfo, {
+		Size = UDim2.new(originalSize.X.Scale * 1.15, originalSize.X.Offset * 1.15, originalSize.Y.Scale * 1.15, originalSize.Y.Offset * 1.15)
+	})
+	tween:Play()
+
+	if not activeConnections[gui] then activeConnections[gui] = {} end
+	table.insert(activeConnections[gui], {Disconnect = function() tween:Cancel() end})
 end
 
 function ScratchController.OpenScratch(ticketName: string)
@@ -116,8 +213,16 @@ function ScratchController.OpenScratch(ticketName: string)
 	}):Play()
 
 	-- 5. POPULATE AND CONNECT
-	local revealedAtStart = 0
 	local iconBg = mainFrame:FindFirstChild("ICONBG")
+
+	-- Hide buttons initially
+	local collectButt = mainFrame:FindFirstChild("COLLECTBUTT")
+	local trowButt = mainFrame:FindFirstChild("TROWBUTT")
+	if collectButt then collectButt.Visible = false end
+	if trowButt then trowButt.Visible = false end
+
+	animateInfoText(gui)
+
 	if iconBg then
 		for _, child in ipairs(iconBg:GetChildren()) do
 			local indexStr = child.Name:match("%d+")
@@ -134,7 +239,6 @@ function ScratchController.OpenScratch(ticketName: string)
 				if result == nil then result = session[tostring(i)] end
 
 				if result ~= nil then
-					revealedAtStart += 1
 					child.BackgroundColor3 = result and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 					child.Text = result and "GREEN" or "RED"
 				end
@@ -162,11 +266,7 @@ function ScratchController.OpenScratch(ticketName: string)
 		end
 	end
 
-	if revealedAtStart >= 3 then
-		task.delay(3, function()
-			closeAndDestroy(gui)
-		end)
-	end
+	checkCompletion(gui, ticketName)
 
 	-- Safety manual close
 	local closeButt = mainFrame:FindFirstChild("CloseButt")
@@ -216,22 +316,7 @@ RevealSquareEvent.OnClientEvent:Connect(function(ticketName, squareIndex, isMatc
 		end
 	end
 
-	-- Auto-close check
-	local revealedCount = 0
-	if iconBg then
-		for _, child in ipairs(iconBg:GetChildren()) do
-			if child.Name:match("%d+") and child.Text ~= "?" then
-				revealedCount += 1
-			end
-		end
-	end
-
-	if revealedCount >= 3 then
-		local guiToClose = currentGui
-		task.delay(3, function()
-			closeAndDestroy(guiToClose)
-		end)
-	end
+	checkCompletion(currentGui, ticketName)
 end)
 
 return ScratchController

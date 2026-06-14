@@ -47,10 +47,17 @@ local function setupCommunication()
 		getSession.Parent = eventsFolder
 	end
 
-	return buyTicket, sellTicket, revealSquare, getSession
+	local finishSession = eventsFolder:FindFirstChild("FinishScratchSession")
+	if not finishSession then
+		finishSession = Instance.new("RemoteFunction")
+		finishSession.Name = "FinishScratchSession"
+		finishSession.Parent = eventsFolder
+	end
+
+	return buyTicket, sellTicket, revealSquare, getSession, finishSession
 end
 
-local buyTicketFunc, sellTicketFunc, revealSquareEvent, getSessionFunc = setupCommunication()
+local buyTicketFunc, sellTicketFunc, revealSquareEvent, getSessionFunc, finishSessionFunc = setupCommunication()
 
 -- BUY TICKET
 local function onBuyTicket(player: Player, ticketName: string)
@@ -123,15 +130,8 @@ local function onGetSession(player: Player, ticketName: string)
 	-- 1. If session exists, return it (Resume)
 	if playerSessions[userId] and playerSessions[userId][ticketName] then
 		local session = playerSessions[userId][ticketName]
-
-		-- Defensive check: if it was already finished, clear it and force a new one
-		if isSessionComplete(session) then
-			print("TicketService: Found completed session for " .. player.Name .. " - " .. ticketName .. ". Clearing.")
-			playerSessions[userId][ticketName] = nil
-		else
-			print("TicketService: Resuming session for " .. player.Name .. " - " .. ticketName)
-			return session
-		end
+		print("TicketService: Resuming session for " .. player.Name .. " - " .. ticketName)
+		return session
 	end
 
 	-- 2. No session, try to start a new one
@@ -198,6 +198,36 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 	end
 
 	if revealedCount >= 3 then
+		print("TicketService: Session " .. ticketName .. " for " .. player.Name .. " is now complete (awaiting manual finish)")
+	end
+end
+
+local function onFinishSession(player: Player, ticketName: string, action: string)
+	local userId = tostring(player.UserId)
+	local session = playerSessions[userId] and playerSessions[userId][ticketName]
+
+	if not session then return {Success = false, Error = "No session"} end
+
+	-- Check if session is actually complete
+	local revealedCount = 0
+	local matchesCount = 0
+	for i = 1, 10 do
+		local res = session[tostring(i)]
+		if res == nil then res = session[i] end
+		if res ~= nil then
+			revealedCount += 1
+			if res == true then matchesCount += 1 end
+		end
+	end
+
+	if revealedCount < 3 then
+		return {Success = false, Error = "Session not complete"}
+	end
+
+	local config = GameConfig.Tickets[ticketName]
+	if not config then return {Success = false, Error = "Invalid Ticket"} end
+
+	if action == "Collect" then
 		local reward = 0
 		if matchesCount == 3 then
 			reward = config.Rewards.Jackpot
@@ -212,12 +242,16 @@ local function onRevealSquare(player: Player, ticketName: string, squareIndex: n
 				cashValue.Value += reward
 				print("TicketService: Reward paid to " .. player.Name .. ": $" .. reward)
 			end
+		else
+			warn("TicketService: Player tried to collect 0 reward!")
 		end
-
-		-- CLEAR SESSION
-		playerSessions[userId][ticketName] = nil
-		print("TicketService: Session COMPLETED for " .. player.Name)
+	elseif action == "ThrowAway" then
+		print("TicketService: Player " .. player.Name .. " threw away ticket " .. ticketName)
 	end
+
+	-- CLEAR SESSION
+	playerSessions[userId][ticketName] = nil
+	return {Success = true}
 end
 
 function TicketService.Init()
@@ -226,6 +260,7 @@ function TicketService.Init()
 	buyTicketFunc.OnServerInvoke = onBuyTicket
 	sellTicketFunc.OnServerInvoke = onSellTicket
 	getSessionFunc.OnServerInvoke = onGetSession
+	finishSessionFunc.OnServerInvoke = onFinishSession
 	revealSquareEvent.OnServerEvent:Connect(onRevealSquare)
 
 	Players.PlayerRemoving:Connect(function(player)
